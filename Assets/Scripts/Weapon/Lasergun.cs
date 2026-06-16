@@ -174,7 +174,8 @@ public class Lasergun : Gun
                 direct.x = (direction.x) * Mathf.Cos((i - medium) * laserAngle) - direction.y * Mathf.Sin((i - medium) * laserAngle);
                 direct.y = (direction.x) * Mathf.Sin((i - medium) * laserAngle) + direction.y * Mathf.Cos((i - medium) * laserAngle);
                 direct.Normalize();
-                laser[i].SetColors(colorList[i], colorList[i]);
+                laser[i].startColor = colorList[i];
+                laser[i].endColor = colorList[i];
                 RaycastHit2D hit2D = Physics2D.Raycast(muzzlePos.position, direct, 30);
                 laser[i].SetPosition(0, muzzlePos.position);
                 laser[i].SetPosition(1, hit2D.point);
@@ -200,7 +201,8 @@ public class Lasergun : Gun
                 direct.x = (direction.x) * Mathf.Cos((i - medium) * laserAngle) - direction.y * Mathf.Sin((i - medium) * laserAngle);
                 direct.y = (direction.x) * Mathf.Sin((i - medium) * laserAngle) + direction.y * Mathf.Cos((i - medium) * laserAngle);
                 direct.Normalize();
-                laser[i].SetColors(colorList[i], colorList[i]);
+                laser[i].startColor = colorList[i];
+                laser[i].endColor = colorList[i];
                 RaycastHit2D hit2D = Physics2D.Raycast(muzzlePos.position, direct, 30);
                 laser[i].SetPosition(0, muzzlePos.position);
                 laser[i].SetPosition(1, hit2D.point);
@@ -225,7 +227,8 @@ public class Lasergun : Gun
                 direct.x = (direction.x) * Mathf.Cos((i - medium + 1) * laserAngle) - direction.y * Mathf.Sin((i - medium + 1) * laserAngle);
                 direct.y = (direction.x) * Mathf.Sin((i - medium + 1) * laserAngle) + direction.y * Mathf.Cos((i - medium + 1) * laserAngle);
                 direct.Normalize();
-                laser[i].SetColors(colorList[i], colorList[i]);
+                laser[i].startColor = colorList[i];
+                laser[i].endColor = colorList[i];
                 RaycastHit2D hit2D = Physics2D.Raycast(muzzlePos.position, direct, 30);
                 laser[i].SetPosition(0, muzzlePos.position);
                 laser[i].SetPosition(1, hit2D.point);

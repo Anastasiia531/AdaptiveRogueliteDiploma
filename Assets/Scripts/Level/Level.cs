@@ -26,6 +26,7 @@ public class Level : MonoBehaviour
     #region 其他
     public Player player;
     private UIManager UI;
+    private bool roomsGenerated = false;
     #endregion
 
     private void Awake()
@@ -35,19 +36,52 @@ public class Level : MonoBehaviour
     }
     private void OnEnable()
     {
-        player = GameManager.Instance.player;
-        UI = UIManager.Instance;
-        CreateRooms();
-        UI.miniMap.CreateMiniMap();
-        MoveToStartRoom();
+        InitializeLevel();
+    }
+    private void OnDisable()
+    {
+        roomsGenerated = false;
     }
     private void Start()
     {
+        InitializeLevel();
+    }
+
+    private void InitializeLevel()
+    {
+        if (GameManager.Instance != null && GameManager.Instance.level != null && GameManager.Instance.level != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        if (roomsGenerated) return;
+
+        if (GameManager.Instance == null || GameManager.Instance.player == null || UIManager.Instance == null)
+        {
+            return;
+        }
+
+        roomsGenerated = true;
         player = GameManager.Instance.player;
         UI = UIManager.Instance;
         CreateRooms();
+        UI.miniMap.level = this;
         UI.miniMap.CreateMiniMap();
         MoveToStartRoom();
+
+        // Diagnostic Logging
+        Debug.LogFormat("[DDA DIAGNOSTIC] Level Initialized. Player: controllable={0}, speed={1}, live={2}. Active rooms={3}.", 
+            player.isControllable, player.speed, player.isLive, transform.childCount);
+        foreach (Transform child in transform)
+        {
+            Room r = child.GetComponent<Room>();
+            if (r != null)
+            {
+                Debug.LogFormat("[DDA DIAGNOSTIC] Room: name={0}, coord={1}, type={2}, activeDoors={3}, totalDoors={4}, preRoom={5}", 
+                    child.name, r.coordinate, r.roomType, r.activeDoorList.Count, r.doorList.Count, r.preRoom != null ? r.preRoom.name : "null");
+            }
+        }
     }
 
     /// <summary>
@@ -198,11 +232,11 @@ public class Level : MonoBehaviour
     }
 
     /// <summary>
-    /// 设置各个房间的类型
+    /// 设置各个房间的类型并动态转换组件
     /// </summary>
     private void SetRoomsType(List<Room> singleDoorRoomList)
     {
-        //先全部设为普通
+        // 1. Спершу всі кімнати робимо звичайними (Normal)
         foreach (Room room in roomArray)
         {
             if (room != null)
@@ -211,28 +245,162 @@ public class Level : MonoBehaviour
             }
         }
 
-        //宝藏
-        singleDoorRoomList[singleDoorRoomList.Count - 3].roomType =
-            RoomType.Treasure;
-
-
-        //Boss
-        singleDoorRoomList[singleDoorRoomList.Count - 1].roomType =
-            RoomType.Boss;
-
-        //商店
-        singleDoorRoomList[singleDoorRoomList.Count - 2].roomType =
-            RoomType.Shop;
-
-        //起始
+        // Скарбниця
+        singleDoorRoomList[singleDoorRoomList.Count - 3].roomType = RoomType.Treasure;
+        // Boss
+        singleDoorRoomList[singleDoorRoomList.Count - 1].roomType = RoomType.Boss;
+        // Магазин
+        singleDoorRoomList[singleDoorRoomList.Count - 2].roomType = RoomType.Shop;
+        // Стартова
         currentRoom.roomType = RoomType.Start;
 
-        //初始化
+        // Збираємо список усіх звичайних кімнат (не спеціальних з 1 дверима)
+        List<Room> normalRooms = new List<Room>();
+        foreach (Room room in roomArray)
+        {
+            if (room != null && room.roomType == RoomType.Normal)
+            {
+                normalRooms.Add(room);
+            }
+        }
+
+        // Призначаємо хоча б 1 ChallengeRoom (випробування/міні-гру)
+        if (normalRooms.Count > 0)
+        {
+            Room challengeChoice = normalRooms[UnityEngine.Random.Range(0, normalRooms.Count)];
+            challengeChoice.roomType = RoomType.Challenge;
+            normalRooms.Remove(challengeChoice);
+        }
+
+        // З ймовірністю 50% призначаємо SafeRoom (Спокійна кімната)
+        if (normalRooms.Count > 0 && UnityEngine.Random.value > 0.5f)
+        {
+            Room safeChoice = normalRooms[UnityEngine.Random.Range(0, normalRooms.Count)];
+            safeChoice.roomType = RoomType.SafeRoom;
+            normalRooms.Remove(safeChoice);
+        }
+
+        // 2. Конвертуємо компоненти кімнат у відповідні підкласи
+        for (int x = 0; x < MAX_SIZE; x++)
+        {
+            for (int y = 0; y < MAX_SIZE; y++)
+            {
+                Room oldRoom = roomArray[x, y];
+                if (oldRoom == null) continue;
+
+                Room newRoom = null;
+                switch (oldRoom.roomType)
+                {
+                    case RoomType.Start:
+                    case RoomType.Normal:
+                    case RoomType.Boss:
+                        newRoom = ConvertRoomComponent<CombatRoom>(oldRoom);
+                        break;
+
+                    case RoomType.Treasure:
+                    case RoomType.Shop:
+                    case RoomType.SafeRoom:
+                        newRoom = ConvertRoomComponent<SpecialtyRoom>(oldRoom);
+                        break;
+
+                    case RoomType.Challenge:
+                        // Вибираємо випадкову міні-гру з 12 доступних
+                        int challengeIndex = UnityEngine.Random.Range(0, 12);
+                        switch (challengeIndex)
+                        {
+                            case 0: newRoom = ConvertRoomComponent<GhostSurvivalChallenge>(oldRoom); break;
+                            case 1: newRoom = ConvertRoomComponent<ThreeCardsMonte>(oldRoom); break;
+                            case 2: newRoom = ConvertRoomComponent<QuickTileReaction>(oldRoom); break;
+                            case 3: newRoom = ConvertRoomComponent<SequenceMemoryChallenge>(oldRoom); break;
+                            case 4: newRoom = ConvertRoomComponent<SacrificeAltar>(oldRoom); break;
+                            case 5: newRoom = ConvertRoomComponent<RouletteWheel>(oldRoom); break;
+                            case 6: newRoom = ConvertRoomComponent<TimeMazeChallenge>(oldRoom); break;
+                            case 7: newRoom = ConvertRoomComponent<CobwebDodgeChallenge>(oldRoom); break;
+                            case 8: newRoom = ConvertRoomComponent<ObserverRoom>(oldRoom); break;
+                            case 9: newRoom = ConvertRoomComponent<BombPushChallenge>(oldRoom); break;
+                            case 10: newRoom = ConvertRoomComponent<SkyTearsSurvivalChallenge>(oldRoom); break;
+                            default: newRoom = ConvertRoomComponent<ChangingSafeZones>(oldRoom); break;
+                        }
+                        break;
+                }
+
+                roomArray[x, y] = newRoom;
+
+                if (oldRoom == currentRoom)
+                {
+                    currentRoom = newRoom;
+                }
+            }
+        }
+
+        // 3. Відновлюємо списки сусідів для нових компонентів кімнат
+        RebuildNeighboringRooms();
+
+        // 4. Ініціалізуємо всі кімнати
         foreach (Room room in roomArray)
         {
             if (room != null)
             {
                 room.Initialize();
+            }
+        }
+    }
+
+    private T ConvertRoomComponent<T>(Room oldRoom) where T : Room
+    {
+        GameObject go = oldRoom.gameObject;
+
+        // Зберігаємо посилання на важливі змінні кімнати
+        Vector2 coord = oldRoom.coordinate;
+        RoomType type = oldRoom.roomType;
+        Level lvl = oldRoom.level;
+        List<GameObject> dList = oldRoom.doorList;
+        List<GameObject> actDList = oldRoom.activeDoorList;
+        List<GameObject> neighDList = oldRoom.neighboringDoorList;
+        List<Room> neighRList = oldRoom.neighboringRoomList;
+
+        Transform itemC = oldRoom.itemContainer;
+        Transform monsterC = oldRoom.monsterContainer;
+        Transform defaultC = oldRoom.defaultContainer;
+
+        // Видаляємо старий базовий компонент Room
+        DestroyImmediate(oldRoom);
+
+        // Додаємо новий компонент підкласу
+        T newRoom = go.AddComponent<T>();
+
+        // Переконуємось, що об'єкт активний (оскільки OnDestroy старого компонента міг деактивувати його)
+        go.SetActive(true);
+
+        // Відновлюємо посилання у новому компоненті
+        newRoom.coordinate = coord;
+        newRoom.roomType = type;
+        newRoom.level = lvl;
+        newRoom.doorList = dList;
+        newRoom.activeDoorList = actDList;
+        newRoom.neighboringDoorList = neighDList;
+        newRoom.neighboringRoomList = neighRList;
+
+        newRoom.itemContainer = itemC;
+        newRoom.monsterContainer = monsterC;
+        newRoom.defaultContainer = defaultC;
+
+        return newRoom;
+    }
+
+    private void RebuildNeighboringRooms()
+    {
+        foreach (Room room in roomArray)
+        {
+            if (room != null)
+            {
+                room.neighboringRoomList.Clear();
+                int x = (int)room.coordinate.x;
+                int y = (int)room.coordinate.y;
+                if (x + 1 < MAX_SIZE && roomArray[x + 1, y] != null) room.neighboringRoomList.Add(roomArray[x + 1, y]);
+                if (x - 1 >= 0 && roomArray[x - 1, y] != null) room.neighboringRoomList.Add(roomArray[x - 1, y]);
+                if (y - 1 >= 0 && roomArray[x, y - 1] != null) room.neighboringRoomList.Add(roomArray[x, y - 1]);
+                if (y + 1 < MAX_SIZE && roomArray[x, y + 1] != null) room.neighboringRoomList.Add(roomArray[x, y + 1]);
             }
         }
     }
@@ -299,7 +467,24 @@ public class Level : MonoBehaviour
         }
 
         //恢复玩家暂停
-        player.PlayerResume();
+        if (MoveDirection == Vector2.zero)
+        {
+            int currentDepth = GameManager.Instance != null ? GameManager.Instance.depth : 0;
+            if (StoryManager.Instance != null && currentDepth >= 0 && currentDepth <= 4)
+            {
+                StoryManager.Instance.ShowLevelTutorial(currentDepth, () => {
+                    if (player != null) player.PlayerResume();
+                });
+            }
+            else
+            {
+                player.PlayerResume();
+            }
+        }
+        else
+        {
+            player.PlayerResume();
+        }
     }
 
 }

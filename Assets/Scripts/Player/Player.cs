@@ -6,7 +6,7 @@ public class Player : MonoBehaviour, IsAttackable
 {
     public float SPEED = 3.0f;
 
-    //状态
+    // Стан
     public int MAX_HEALTH;
     [HideInInspector]
     public int maxHealth;
@@ -31,7 +31,7 @@ public class Player : MonoBehaviour, IsAttackable
     public float shotTiming;
     public GunType initial;
 
-    [Header("自身")]
+    [Header("自身 (Компоненти)")]
     float horizontal;
     float vertical;
     Rigidbody2D rigidbody2d;
@@ -45,9 +45,9 @@ public class Player : MonoBehaviour, IsAttackable
     Vector2 lookDirection = new Vector2(1, 0);
     public GameObject[] guns;
     private bool[] isGunAvailable;
-    private int gunNum;//当前使用的枪械的下标
+    private int gunNum; // Поточний індекс зброї
 
-    [Header("其他")]
+    [Header("Інші менеджери")]
     UIManager UI;
     Level level;
 
@@ -61,14 +61,14 @@ public class Player : MonoBehaviour, IsAttackable
         bodyRenderer = Body.GetComponent<SpriteRenderer>();
     }
 
-    // 在第一次帧更新之前调用 Start
     void Start()
     {
         level = GameManager.Instance.level;
-        UI = UIManager.Instance;
+
+        // ДИПЛОМ: Запобігання вильоту, якщо UIManager або його наслідники ініціалізуються інакше
+        UI = FindObjectOfType<UIManager>();
 
         PlayerInitialize();
-
     }
 
     private void Update()
@@ -96,7 +96,6 @@ public class Player : MonoBehaviour, IsAttackable
 
     void UpdateControl()
     {
-
         if (Input.GetKey(KeyCode.UpArrow))
         {
             LaunchBullet(KeyCode.UpArrow);
@@ -119,13 +118,9 @@ public class Player : MonoBehaviour, IsAttackable
         }
     }
 
-    /// <summary>
-    /// 按下按键发射子弹
-    /// </summary>
     void LaunchBullet(KeyCode key)
     {
         shotTiming += Time.deltaTime;
-
         headAnimator.SetBool("IsShooting", true);
         Gun Gun = guns[gunNum].GetComponent<Gun>();
 
@@ -165,6 +160,7 @@ public class Player : MonoBehaviour, IsAttackable
     {
         return guns[gunNum].transform;
     }
+
     void SwitchGun()
     {
         if (Input.GetKeyDown(KeyCode.Q))
@@ -179,7 +175,7 @@ public class Player : MonoBehaviour, IsAttackable
             } while (!isGunAvailable[gunNum]);
             guns[gunNum].GetComponent<Gun>().NUM = bulletNum;
             guns[gunNum].SetActive(true);
-            UI.UpdateStatus();
+            if (UI != null) UI.UpdateStatus();
         }
         if (Input.GetKeyDown(KeyCode.E))
         {
@@ -193,7 +189,7 @@ public class Player : MonoBehaviour, IsAttackable
             } while (!isGunAvailable[gunNum]);
             guns[gunNum].GetComponent<Gun>().NUM = bulletNum;
             guns[gunNum].SetActive(true);
-            UI.UpdateStatus();
+            if (UI != null) UI.UpdateStatus();
         }
     }
 
@@ -235,16 +231,27 @@ public class Player : MonoBehaviour, IsAttackable
     public void PlayerPause()
     {
         isControllable = false;
-        SPEED = speed;
+        if (speed > 0.001f)
+        {
+            SPEED = speed;
+        }
         speed = 0;
         rigidbody2d.velocity = Vector2.zero;
         headAnimator.speed = 0;
         bodyAnimator.speed = 0;
     }
+
     public void PlayerResume()
     {
         isControllable = true;
-        speed = SPEED;
+        if (SPEED > 0.001f)
+        {
+            speed = SPEED;
+        }
+        else
+        {
+            speed = 3.0f; // Safe fallback speed if SPEED was somehow corrupted
+        }
         headAnimator.speed = 1;
         bodyAnimator.speed = 1;
     }
@@ -257,9 +264,6 @@ public class Player : MonoBehaviour, IsAttackable
         PlayerPause();
     }
 
-    /// <summary>
-    /// 状态初始化
-    /// </summary>
     public void PlayerInitialize()
     {
         maxHealth = MAX_HEALTH;
@@ -280,28 +284,26 @@ public class Player : MonoBehaviour, IsAttackable
         wholeAnimator.Play("Respawn");
         PlayerResume();
 
-        UI.PlayerUIInitialize();
+        if (UI != null) UI.PlayerUIInitialize();
     }
 
-    /// <summary>
-    /// 加血
-    /// </summary>
-    /// <param name="health"></param>
-    /// <param name="type"></param>
-    /// <param name="maxHealth"></param>
     public void AddHealth(int health)
     {
         Health += health;
-        UI.hp.UpdateHP();
+        if (UI != null && UI.hp != null) UI.hp.UpdateHP();
     }
-    /// <summary>
-    /// 扣血
-    /// </summary>
-    /// <param name="damage"></param>
+
     public void ReduceHealth(float damage)
     {
         Health -= damage;
-        UI.hp.UpdateHP();
+        if (UI != null && UI.hp != null) UI.hp.UpdateHP();
+
+        // ДИПЛОМ: Надсилаємо дані про отриману шкоду в менеджер адаптації складності
+        if (AdaptiveDifficultyManager.Instance != null && damage > 0)
+        {
+            AdaptiveDifficultyManager.Instance.LogPlayerDamage((int)damage);
+        }
+
         if (Health == 0) { PlayerDeath(); }
     }
 
@@ -310,10 +312,6 @@ public class Player : MonoBehaviour, IsAttackable
         speed += spd;
     }
 
-    /// <summary>
-    /// 受到攻击
-    /// </summary>
-    /// <param name="damage"></param>
     public void BeAttacked(float damage, Vector2 direction, float forceMultiple = 1)
     {
         if (isInvincible || !isLive) { return; }
@@ -325,39 +323,26 @@ public class Player : MonoBehaviour, IsAttackable
         }
     }
 
-    /// <summary>
-    /// 被击退效果
-    /// </summary>
-    /// <param name="force"></param>
-    /// <returns></returns>
     IEnumerator knockBackCoroutine(Vector2 force)
     {
-
-
         float length = 0.3f;
         float overTime = 0.1f;
         float timeleft = overTime;
-        while (timeleft > 0)
+        while (force != null && timeleft > 0)
         {
-            //overTime时间内移动direction * length的距离
             transform.Translate(force * length * Time.deltaTime / overTime);
             timeleft -= Time.deltaTime;
             yield return null;
         }
-
-
     }
 
-    /// <summary>
-    /// 进入无敌状态并闪烁
-    /// </summary>
     IEnumerator Invincible()
     {
         isInvincible = true;
         Color red = new Color(1, 0.2f, 0.2f, 1);
 
-        float time = 0;//计时
-        float flashCD = 0;//闪烁计时
+        float time = 0;
+        float flashCD = 0;
 
         while (time < 1f)
         {
@@ -384,13 +369,8 @@ public class Player : MonoBehaviour, IsAttackable
         isInvincible = false;
     }
 
-    /// <summary>
-    /// 判断碰撞体并移动到下一个房间
-    /// </summary>
-    /// <param name="collider"></param>
     void OnTriggerEnter2D(Collider2D collider)
     {
-        //移动到下一个房间
         if (isControllable && collider.transform.CompareTag("Door"))
         {
             string flag = collider.transform.parent.gameObject.name;
@@ -412,5 +392,4 @@ public class Player : MonoBehaviour, IsAttackable
             }
         }
     }
-
 }

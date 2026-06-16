@@ -3,7 +3,24 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // 房间类型
-public enum RoomType { Start, Normal, Boss, Treasure, Shop };
+public enum RoomType { Start, Normal, Boss, Treasure, Shop, SafeRoom, Challenge };
+
+// Типи випробувань (міні-ігор)
+public enum ChallengeType
+{
+    GhostSurvival,
+    ThreeCardsMonte,
+    QuickTileReaction,
+    SequenceMemory,
+    SacrificeAltar,
+    RouletteWheel,
+    TimeMaze,
+    CobwebDodge,
+    Observer,
+    BombPush,
+    SkyTearsSurvival,
+    ChangingSafeZones
+}
 
 // 游戏物体类型
 public enum GameItemType { Item, Monster };

@@ -18,7 +18,31 @@ public class Monster : GameItem, IsAttackable
     protected override void Awake()
     {
         base.Awake();
+        ApplyDDAScaling();
         ActiveHPSlider();
+    }
+
+    private void ApplyDDAScaling()
+    {
+        if (AdaptiveDifficultyManager.Instance == null) return;
+
+        // DDA scales stats from 0.7x (lowest skill) to 1.3x (highest skill)
+        float ddaMult = 0.7f + AdaptiveDifficultyManager.Instance.SkillIndex * 0.6f;
+        int currentDepth = (GameManager.Instance != null) ? GameManager.Instance.depth : 1;
+        // Floor depth scales stats by +15% per level
+        float depthMult = 1f + (currentDepth - 1) * 0.15f;
+
+        float totalMultiplier = ddaMult * depthMult;
+
+        HP = Mathf.Max(1f, Mathf.Round(HP * totalMultiplier));
+
+        // Use reflection to scale speed field if it exists in the subclass
+        System.Reflection.FieldInfo speedField = GetType().GetField("speed");
+        if (speedField != null)
+        {
+            float curSpeed = (float)speedField.GetValue(this);
+            speedField.SetValue(this, curSpeed * (0.8f + AdaptiveDifficultyManager.Instance.SkillIndex * 0.4f));
+        }
     }
     protected virtual void Update()
     {

@@ -29,15 +29,31 @@ public class GameManager : Singleton<GameManager>
 
     public void LevelUp()
     {
-        int temp = level.roomNum;
         depth += 1;
+        
+        // Show story narration for the level just completed (depth - 1)
+        if (StoryManager.Instance != null && depth - 1 >= 1 && depth - 1 <= 5)
+        {
+            StoryManager.Instance.ShowStory(depth - 1, ContinueLevelUp);
+        }
+        else
+        {
+            ContinueLevelUp();
+        }
+    }
+
+    private void ContinueLevelUp()
+    {
         levelPrefab.roomNum += 2 * depth;
         levelPrefab.roomNum = Mathf.Clamp(levelPrefab.roomNum, 0, 12);
         level.gameObject.SetActive(false);
         myCamera.transform.position = new Vector3(0, 0, -10);
         player.transform.position = new Vector3(0, 0, 0);
         level.gameObject.SetActive(true);
-        UIManager.Instance.GetComponent<UIManager>().initialize();
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.initialize();
+        }
     }
 
     public void SwitchScene(string sceneName)

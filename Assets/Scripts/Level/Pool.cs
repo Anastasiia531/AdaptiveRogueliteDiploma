@@ -69,18 +69,48 @@ public class Pool : MonoBehaviour
         switch (type)
         {
             case RoomType.Start:
+                if (startRoom == null || startRoom.Count == 0)
+                {
+                    startRoom.Clear();
+                    startRoom.AddRange(Resources.LoadAll<RoomLayout>(roomLayoutFileFolderPath[0]));
+                }
                 return GetRandomRoomLayout(startRoom, false);
             case RoomType.Normal:
-                if (normalRoom.Count == 0)
+                if (normalRoom == null || normalRoom.Count == 0)
                 {
+                    normalRoom.Clear();
                     normalRoom.AddRange(Resources.LoadAll<RoomLayout>(roomLayoutFileFolderPath[1]));
                 }
                 return GetRandomRoomLayout(normalRoom, true);
+            case RoomType.Challenge:
+            case RoomType.SafeRoom:
+                if (normalRoom == null || normalRoom.Count == 0)
+                {
+                    normalRoom.Clear();
+                    normalRoom.AddRange(Resources.LoadAll<RoomLayout>(roomLayoutFileFolderPath[1]));
+                }
+                // Use false so we do not consume/remove layouts from the normal room pool
+                return GetRandomRoomLayout(normalRoom, false);
             case RoomType.Boss:
+                if (bossRoom == null || bossRoom.Count == 0)
+                {
+                    bossRoom.Clear();
+                    bossRoom.AddRange(Resources.LoadAll<RoomLayout>(roomLayoutFileFolderPath[2]));
+                }
                 return GetRandomRoomLayout(bossRoom, false);
             case RoomType.Treasure:
+                if (treasureRoom == null || treasureRoom.Count == 0)
+                {
+                    treasureRoom.Clear();
+                    treasureRoom.AddRange(Resources.LoadAll<RoomLayout>(roomLayoutFileFolderPath[3]));
+                }
                 return GetRandomRoomLayout(treasureRoom, false);
             case RoomType.Shop:
+                if (shopRoom == null || shopRoom.Count == 0)
+                {
+                    shopRoom.Clear();
+                    shopRoom.AddRange(Resources.LoadAll<RoomLayout>(roomLayoutFileFolderPath[4]));
+                }
                 return GetRandomRoomLayout(shopRoom, false);
             default:
                 return null;

@@ -14,7 +14,7 @@ public class Room : MonoBehaviour
     [HideInInspector]
     public Vector2 coordinate;//坐标
 
-    private RoomLayout roomLayout;//布局文件
+    protected RoomLayout roomLayout;//布局文件
 
     public bool isArrived = false;//是否已到达
     public bool isCleared = false;//是否已清理过
@@ -36,11 +36,11 @@ public class Room : MonoBehaviour
 
     public List<GameObject> doorList;//门列表
     public int ActiveDoorCount { get { return activeDoorList.Count; } }
-    private List<GameObject> activeDoorList = new List<GameObject>();
-    private List<GameObject> neighboringDoorList = new List<GameObject>();
+    public List<GameObject> activeDoorList = new List<GameObject>();
+    public List<GameObject> neighboringDoorList = new List<GameObject>();
 
-    private List<Room> neighboringRoomList = new List<Room>();//相邻的房间
-    private GameObject preRoom;
+    public List<Room> neighboringRoomList = new List<Room>();//相邻的房间
+    public GameObject preRoom;
     #endregion
 
 
@@ -60,7 +60,7 @@ public class Room : MonoBehaviour
     {
     }
 
-    public void Initialize()
+    public virtual void Initialize()
     {
         roomLayout = level.pools.GetRoomLayout(roomType);
         preRoom = roomLayout.room;
@@ -78,6 +78,7 @@ public class Room : MonoBehaviour
     {
         GameObject door = doorList[(int)directionType];
 
+        door.SetActive(true);
         door.transform.Find("Door").gameObject.SetActive(true);
         activeDoorList.Add(door);
         neighboringRoomList.Add(neighboringRoom);
@@ -94,8 +95,22 @@ public class Room : MonoBehaviour
         // doors.AddRange(neighboringDoorList);
         foreach (var door in doors)
         {
-            door.transform.Find("collider").gameObject.GetComponent<BoxCollider2D>().isTrigger = true;
-            door.transform.Find("Door").GetComponent<Animator>().Play("DoorOpen");
+            if (door != null && door.activeInHierarchy)
+            {
+                var colTrans = door.transform.Find("collider");
+                if (colTrans != null)
+                {
+                    var col = colTrans.gameObject.GetComponent<BoxCollider2D>();
+                    if (col != null) col.isTrigger = true;
+                }
+                
+                var doorVisual = door.transform.Find("Door");
+                if (doorVisual != null && doorVisual.gameObject.activeInHierarchy)
+                {
+                    var anim = doorVisual.GetComponent<Animator>();
+                    if (anim != null) anim.Play("DoorOpen");
+                }
+            }
         }
     }
 
@@ -133,7 +148,7 @@ public class Room : MonoBehaviour
     /// <summary>
     /// 根据房间布局文件roomLayout 生成内容
     /// </summary>
-    public void GenerateRoomContent()
+    public virtual void GenerateRoomContent()
     {
 
         for (int i = 0; i < roomLayout.itemList.Count; i++)
@@ -161,8 +176,27 @@ public class Room : MonoBehaviour
         GenerateGameObjectWithCoordinate(reward, roomLayout.RewardPosition, itemContainer);
         if (roomType == RoomType.Boss)
         {
-            transform.Find(roomLayout.name + "(Clone)").transform.Find("LevelUp").gameObject.SetActive(true);
+            Transform levelUp = FindChildRecursive(transform, "LevelUp");
+            if (levelUp != null)
+            {
+                levelUp.gameObject.SetActive(true);
+            }
+            else
+            {
+                Debug.LogWarning("[DDA] LevelUp (hatch) child object not found in Boss room hierarchy!");
+            }
         }
+    }
+
+    private Transform FindChildRecursive(Transform parent, string targetName)
+    {
+        foreach (Transform child in parent)
+        {
+            if (child.name == targetName) return child;
+            Transform found = FindChildRecursive(child, targetName);
+            if (found != null) return found;
+        }
+        return null;
     }
 
     /// <summary>
@@ -201,15 +235,26 @@ public class Room : MonoBehaviour
     /// <summary>
     /// 检查开门
     /// </summary>
-    public void CheckOpenDoor()
+    public virtual void CheckOpenDoor()
     {
-        StartCoroutine(DelayCheck());
+        if (gameObject.activeInHierarchy)
+        {
+            StartCoroutine(DelayCheck());
+        }
+        else if (level != null && level.gameObject.activeInHierarchy)
+        {
+            level.StartCoroutine(DelayCheck());
+        }
+        else if (GameManager.Instance != null && GameManager.Instance.gameObject.activeInHierarchy)
+        {
+            GameManager.Instance.StartCoroutine(DelayCheck());
+        }
     }
     /// <summary>
     /// 延迟检查
     /// </summary>
     /// <returns></returns>
-    private IEnumerator DelayCheck()
+    protected virtual IEnumerator DelayCheck()
     {
         yield return null;
         if (monsterContainer.childCount == 0 && !isCleared)
@@ -221,10 +266,5 @@ public class Room : MonoBehaviour
             }
             isCleared = true;
         }
-    }
-
-    private void OnDestroy()
-    {
-        gameObject.SetActive(false);
     }
 }

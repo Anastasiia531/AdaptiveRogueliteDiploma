@@ -34,6 +34,12 @@ public class MiniMap : MonoBehaviour
 
     public void CreateMiniMap()
     {
+        if (width == 0 || height == 0)
+        {
+            width = miniRoomPrefab.GetComponent<RectTransform>().rect.size.x * transform.localScale.x;
+            height = miniRoomPrefab.GetComponent<RectTransform>().rect.size.y * transform.localScale.y;
+        }
+
         hasBeenToList = new List<Vector2>();
         Room[,] roomArray = level.roomArray;
         miniRoomArray = new GameObject[roomArray.GetLength(0), roomArray.GetLength(1)];
