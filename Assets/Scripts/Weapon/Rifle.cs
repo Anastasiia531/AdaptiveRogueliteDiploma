@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -45,6 +45,11 @@ public class Rifle : Gun
         animator.SetTrigger("Shoot");
 
         float Angle = 0.05f * Mathf.PI;
+        if (!isPlayer && AdaptiveDifficultyManager.Instance != null)
+        {
+            // Easy: wider angle (0.12f * PI), Hard: tighter angle (0.02f * PI)
+            Angle = Mathf.Lerp(0.12f * Mathf.PI, 0.02f * Mathf.PI, AdaptiveDifficultyManager.Instance.SkillIndex);
+        }
         Vector2 direct = new Vector2(0, 0);
         int medium = num / 2;
 

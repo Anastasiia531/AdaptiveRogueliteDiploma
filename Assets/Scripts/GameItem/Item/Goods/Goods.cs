@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -14,16 +14,22 @@ public class Goods : Item
     private void Start()
     {
         GameObject prototypeItem = null;
+        float ddaFactor = 1f;
+        if (AdaptiveDifficultyManager.Instance != null)
+        {
+            ddaFactor = 0.5f + AdaptiveDifficultyManager.Instance.SkillIndex; // scale from 0.5x to 1.5x
+        }
+
         //获取道具
         switch (goodstype)
         {
             case Goodstype.Item:
                 prototypeItem = pools.GetItem(ItemPoolType.Shop).gameObject;
-                price = 15;
+                price = Mathf.Max(1, Mathf.RoundToInt(15 * ddaFactor));
                 break;
             case Goodstype.Pickup:
                 prototypeItem = pools.GetPickupGoods();
-                price = 3;
+                price = Mathf.Max(1, Mathf.RoundToInt(3 * ddaFactor));
                 break;
             default:
                 break;
@@ -76,6 +82,10 @@ public class Goods : Item
         {
             case Goodstype.Item:
                 newItem.gameObject.GetComponent<Collider2D>().enabled = true;
+                if (AdaptiveDifficultyManager.Instance != null && AdaptiveDifficultyManager.Instance.SkillIndex < 0.45f)
+                {
+                    player.EnableSuperWeapon(30f);
+                }
                 break;
             case Goodstype.Pickup:
                 newItem.gameObject.SetActive(true);

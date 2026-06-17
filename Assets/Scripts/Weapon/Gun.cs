@@ -111,9 +111,18 @@ public class Gun : MonoBehaviour
         GameObject bullet = ObjectPool.Instance.GetObject(bulletPrefab); //从对象池中获取到子弹的预制体
         bullet.transform.position = muzzlePos.position;//
 
-        float angel = Random.Range(-5f, 5f);//产生一个小的旋转
-        bullet.GetComponent<Bullet>().SetSpeed(Quaternion.AngleAxis(angel, Vector3.forward) * direction);
+        float spreadRange = 5f;
+        if (!isPlayer && AdaptiveDifficultyManager.Instance != null)
+        {
+            // If SkillIndex is 0 (easy), spread is up to 25 degrees (very inaccurate).
+            // If SkillIndex is 1 (hard), spread is 1 degree (perfect aim).
+            spreadRange = Mathf.Lerp(25f, 1f, AdaptiveDifficultyManager.Instance.SkillIndex);
+        }
+        float angel = Random.Range(-spreadRange, spreadRange);
+
         bullet.GetComponent<Bullet>().isPlayerFlag = isPlayer;
+        bullet.GetComponent<Bullet>().SetSpeed(Quaternion.AngleAxis(angel, Vector3.forward) * direction);
+        
         // Instantiate(shellPrefab, shellPos.position, shellPos.rotation);
         GameObject shell = ObjectPool.Instance.GetObject(shellPrefab); //获取弹壳的预制体
         shell.transform.position = shellPos.position; //将位置设置成弹仓位置

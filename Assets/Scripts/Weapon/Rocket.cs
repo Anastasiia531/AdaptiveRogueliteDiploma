@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -13,7 +13,22 @@ public class Rocket : MonoBehaviour
     private bool arrived;//用于表示到达
     public float damage;
     public float knockback;
-    public bool isPlayerFlag;
+    private bool _isPlayerFlag;
+    public bool isPlayerFlag
+    {
+        get { return _isPlayerFlag; }
+        set
+        {
+            _isPlayerFlag = value;
+            if (_isPlayerFlag)
+            {
+                if (AdaptiveDifficultyManager.Instance != null)
+                {
+                    AdaptiveDifficultyManager.Instance.LogPlayerShoot();
+                }
+            }
+        }
+    }
 
     private void Awake()
     {
@@ -61,6 +76,10 @@ public class Rocket : MonoBehaviour
         exp.transform.position = transform.position;
         if (isPlayerFlag && other.tag == "Monster")
         {
+            if (AdaptiveDifficultyManager.Instance != null)
+            {
+                AdaptiveDifficultyManager.Instance.LogPlayerHit();
+            }
             other.GetComponent<Monster>().BeAttacked(damage, rigidbody.velocity / speed, knockback);
         }
         if (!isPlayerFlag && other.tag == "Player")

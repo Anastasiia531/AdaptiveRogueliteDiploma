@@ -24,7 +24,13 @@ public class UIManager : Singleton<UIManager>
     // public PausePanel pausePanel;
 
     private Text skillIndexText;
+    private Text roomTaskText;
     private GameObject dynamicCanvas;
+    private GameObject taskCanvasObj;
+    private Image humanBtnImg;
+    private Image proBtnImg;
+    private Image noobBtnImg;
+    private GameObject mainMenuOverlay;
 
     void Start()
     {
@@ -48,9 +54,94 @@ public class UIManager : Singleton<UIManager>
 
     private void Update()
     {
+        if (player == null)
+        {
+            player = GameManager.Instance != null ? GameManager.Instance.player : null;
+            if (player == null) player = FindObjectOfType<Player>();
+        }
+
+        // Failsafe keyboard selection when the Main Menu is active
+        if (IsMainMenuActive())
+        {
+            if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1))
+            {
+                StartGameWithMode(Player.PlayerControlMode.AI_Pro);
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Keypad2))
+            {
+                StartGameWithMode(Player.PlayerControlMode.AI_Noob);
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3))
+            {
+                StartGameWithMode(Player.PlayerControlMode.Human);
+            }
+        }
+
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            TogglePauseMenu();
+        }
+
         if (skillIndexText != null && AdaptiveDifficultyManager.Instance != null)
         {
-            skillIndexText.text = "Skill Index: " + AdaptiveDifficultyManager.Instance.SkillIndex.ToString("F2");
+            float skill = AdaptiveDifficultyManager.Instance.SkillIndex;
+            string difficultyName = "НОРМАЛЬНО";
+            string diffColorHex = "FFFF00"; // Yellow
+            if (skill < 0.35f)
+            {
+                difficultyName = "ЛЕГКО";
+                diffColorHex = "00FF00"; // Green
+            }
+            else if (skill > 0.7f)
+            {
+                difficultyName = "СКЛАДНО";
+                diffColorHex = "FF0000"; // Red
+            }
+
+            int score = AdaptiveDifficultyManager.Instance.GetGameScore();
+            int rooms = AdaptiveDifficultyManager.Instance.roomsCleared;
+            int dmg = AdaptiveDifficultyManager.Instance.totalDamageTaken;
+            int chalWin = AdaptiveDifficultyManager.Instance.challengesCleared;
+            int chalLose = AdaptiveDifficultyManager.Instance.challengesFailed;
+            float accuracy = AdaptiveDifficultyManager.Instance.GetAccuracy() * 100f;
+            float avgTime = AdaptiveDifficultyManager.Instance.GetAverageRoomClearTime();
+            string speedStr = avgTime > 0f ? string.Format("{0:F1}с", avgTime) : "немає даних";
+
+            skillIndexText.text = string.Format(
+                "DDA Skill Index: {0:F2}\n" +
+                "Складність: <color=#{1}>{2}</color>\n" +
+                "Рахунок гри: {3}\n" +
+                "Пройдено кімнат: {4}\n" +
+                "Отримано шкоди: {5} HP\n" +
+                "Міткість (точність): {6:F1}%\n" +
+                "Швидкість (очищення): {7}\n" +
+                "Випробування: {8} / {9}",
+                skill,
+                diffColorHex,
+                difficultyName,
+                score,
+                rooms,
+                dmg,
+                accuracy,
+                speedStr,
+                chalWin,
+                chalLose
+            );
+        }
+
+        if (humanBtnImg != null && player != null)
+        {
+            humanBtnImg.color = player.controlMode == Player.PlayerControlMode.Human ? new Color(0.15f, 0.5f, 0.15f, 0.9f) : new Color(0.2f, 0.2f, 0.2f, 0.6f);
+            proBtnImg.color = player.controlMode == Player.PlayerControlMode.AI_Pro ? new Color(0.6f, 0.4f, 0.1f, 0.9f) : new Color(0.2f, 0.2f, 0.2f, 0.6f);
+            noobBtnImg.color = player.controlMode == Player.PlayerControlMode.AI_Noob ? new Color(0.6f, 0.15f, 0.15f, 0.9f) : new Color(0.2f, 0.2f, 0.2f, 0.6f);
+        }
+    }
+
+    public void SetRoomTaskText(string task)
+    {
+        if (roomTaskText != null)
+        {
+            roomTaskText.text = task;
         }
     }
 
@@ -87,6 +178,38 @@ public class UIManager : Singleton<UIManager>
 
         Font uiFont = GetDefaultFont();
 
+        if (taskCanvasObj == null)
+        {
+            taskCanvasObj = new GameObject("RoomTaskContainer");
+            taskCanvasObj.transform.SetParent(existingCanvas.transform, false);
+
+            RectTransform taskRect = taskCanvasObj.AddComponent<RectTransform>();
+            taskRect.anchorMin = new Vector2(0f, 1f);
+            taskRect.anchorMax = new Vector2(0f, 1f);
+            taskRect.pivot = new Vector2(0f, 1f);
+            taskRect.anchoredPosition = new Vector2(20f, -25f); 
+            taskRect.sizeDelta = new Vector2(600f, 40f);
+
+            GameObject taskTextObj = new GameObject("RoomTaskText");
+            taskTextObj.transform.SetParent(taskCanvasObj.transform, false);
+            roomTaskText = taskTextObj.AddComponent<Text>();
+            roomTaskText.font = uiFont;
+            roomTaskText.fontSize = 18;
+            roomTaskText.color = new Color(0.9f, 0.9f, 1f, 1f); 
+            roomTaskText.alignment = TextAnchor.MiddleLeft;
+
+            RectTransform taskTxtRect = taskTextObj.GetComponent<RectTransform>();
+            taskTxtRect.anchorMin = Vector2.zero;
+            taskTxtRect.anchorMax = Vector2.one;
+            taskTxtRect.sizeDelta = Vector2.zero;
+
+            var taskOutline = taskTextObj.AddComponent<Outline>();
+            taskOutline.effectColor = Color.black;
+            taskOutline.effectDistance = new Vector2(1.5f, -1.5f);
+            
+            roomTaskText.text = "КІМНАТА: Знайдіть вихід!";
+        }
+
         // UI Container Panel
         GameObject uiContainer = new GameObject("DDA_UI_Container");
         uiContainer.transform.SetParent(existingCanvas.transform, false);
@@ -96,19 +219,20 @@ public class UIManager : Singleton<UIManager>
         rect.anchorMax = new Vector2(1f, 1f);
         rect.pivot = new Vector2(1f, 1f);
         rect.anchoredPosition = new Vector2(-10f, -80f); // Position below standard minimap/UI
-        rect.sizeDelta = new Vector2(160f, 80f);
+        rect.sizeDelta = new Vector2(180f, 320f); // Taller container for tracking stats
 
         // 1. Skill Index Text
         GameObject textObj = new GameObject("SkillIndexText");
         textObj.transform.SetParent(uiContainer.transform, false);
         skillIndexText = textObj.AddComponent<Text>();
         skillIndexText.font = uiFont;
-        skillIndexText.fontSize = 15;
-        skillIndexText.color = Color.yellow;
-        skillIndexText.alignment = TextAnchor.MiddleRight;
+        skillIndexText.fontSize = 12;
+        skillIndexText.color = Color.white;
+        skillIndexText.alignment = TextAnchor.UpperRight;
+        skillIndexText.supportRichText = true;
         
         RectTransform txtRect = textObj.GetComponent<RectTransform>();
-        txtRect.anchorMin = new Vector2(0f, 0.6f);
+        txtRect.anchorMin = new Vector2(0f, 0.62f);
         txtRect.anchorMax = new Vector2(1f, 1f);
         txtRect.sizeDelta = Vector2.zero;
 
@@ -128,8 +252,8 @@ public class UIManager : Singleton<UIManager>
         });
 
         RectTransform saveRect = saveBtnObj.GetComponent<RectTransform>();
-        saveRect.anchorMin = new Vector2(0f, 0f);
-        saveRect.anchorMax = new Vector2(0.48f, 0.45f);
+        saveRect.anchorMin = new Vector2(0f, 0.45f);
+        saveRect.anchorMax = new Vector2(0.48f, 0.58f);
         saveRect.sizeDelta = Vector2.zero;
 
         GameObject saveTxtObj = new GameObject("SaveText");
@@ -156,8 +280,8 @@ public class UIManager : Singleton<UIManager>
         });
 
         RectTransform loadRect = loadBtnObj.GetComponent<RectTransform>();
-        loadRect.anchorMin = new Vector2(0.52f, 0f);
-        loadRect.anchorMax = new Vector2(1f, 0.45f);
+        loadRect.anchorMin = new Vector2(0.52f, 0.45f);
+        loadRect.anchorMax = new Vector2(1f, 0.58f);
         loadRect.sizeDelta = Vector2.zero;
 
         GameObject loadTxtObj = new GameObject("LoadText");
@@ -173,7 +297,241 @@ public class UIManager : Singleton<UIManager>
         loadTxtRect.anchorMax = Vector2.one;
         loadTxtRect.sizeDelta = Vector2.zero;
 
+        // 4. Human Toggle Button
+        GameObject humBtnObj = new GameObject("HumanButton");
+        humBtnObj.transform.SetParent(uiContainer.transform, false);
+        humanBtnImg = humBtnObj.AddComponent<Image>();
+        Button humBtn = humBtnObj.AddComponent<Button>();
+        humBtn.onClick.AddListener(() => {
+            if (player != null) player.controlMode = Player.PlayerControlMode.Human;
+        });
+
+        RectTransform humRect = humBtnObj.GetComponent<RectTransform>();
+        humRect.anchorMin = new Vector2(0f, 0.30f);
+        humRect.anchorMax = new Vector2(1f, 0.42f);
+        humRect.sizeDelta = Vector2.zero;
+
+        GameObject humTxtObj = new GameObject("HumanText");
+        humTxtObj.transform.SetParent(humBtnObj.transform, false);
+        Text humTxt = humTxtObj.AddComponent<Text>();
+        humTxt.text = "ГРАВЕЦЬ (Клв)";
+        humTxt.font = uiFont;
+        humTxt.fontSize = 11;
+        humTxt.color = Color.white;
+        humTxt.alignment = TextAnchor.MiddleCenter;
+        RectTransform humTxtRect = humTxtObj.GetComponent<RectTransform>();
+        humTxtRect.anchorMin = Vector2.zero;
+        humTxtRect.anchorMax = Vector2.one;
+        humTxtRect.sizeDelta = Vector2.zero;
+
+        // 5. AI Pro Toggle Button
+        GameObject proBtnObj = new GameObject("ProButton");
+        proBtnObj.transform.SetParent(uiContainer.transform, false);
+        proBtnImg = proBtnObj.AddComponent<Image>();
+        Button proBtn = proBtnObj.AddComponent<Button>();
+        proBtn.onClick.AddListener(() => {
+            if (player != null) player.controlMode = Player.PlayerControlMode.AI_Pro;
+        });
+
+        RectTransform proRect = proBtnObj.GetComponent<RectTransform>();
+        proRect.anchorMin = new Vector2(0f, 0.15f);
+        proRect.anchorMax = new Vector2(1f, 0.27f);
+        proRect.sizeDelta = Vector2.zero;
+
+        GameObject proTxtObj = new GameObject("ProText");
+        proTxtObj.transform.SetParent(proBtnObj.transform, false);
+        Text proTxt = proTxtObj.AddComponent<Text>();
+        proTxt.text = "ШІ: ПРО (Pro)";
+        proTxt.font = uiFont;
+        proTxt.fontSize = 11;
+        proTxt.color = Color.white;
+        proTxt.alignment = TextAnchor.MiddleCenter;
+        RectTransform proTxtRect = proTxtObj.GetComponent<RectTransform>();
+        proTxtRect.anchorMin = Vector2.zero;
+        proTxtRect.anchorMax = Vector2.one;
+        proTxtRect.sizeDelta = Vector2.zero;
+
+        // 6. AI Noob Toggle Button
+        GameObject noobBtnObj = new GameObject("NoobButton");
+        noobBtnObj.transform.SetParent(uiContainer.transform, false);
+        noobBtnImg = noobBtnObj.AddComponent<Image>();
+        Button noobBtn = noobBtnObj.AddComponent<Button>();
+        noobBtn.onClick.AddListener(() => {
+            if (player != null) player.controlMode = Player.PlayerControlMode.AI_Noob;
+        });
+
+        RectTransform noobRect = noobBtnObj.GetComponent<RectTransform>();
+        noobRect.anchorMin = new Vector2(0f, 0.0f);
+        noobRect.anchorMax = new Vector2(1f, 0.12f);
+        noobRect.sizeDelta = Vector2.zero;
+
+        GameObject noobTxtObj = new GameObject("NoobText");
+        noobTxtObj.transform.SetParent(noobBtnObj.transform, false);
+        Text noobTxt = noobTxtObj.AddComponent<Text>();
+        noobTxt.text = "ШІ: СЛАБИЙ (Noob)";
+        noobTxt.font = uiFont;
+        noobTxt.fontSize = 11;
+        noobTxt.color = Color.white;
+        noobTxt.alignment = TextAnchor.MiddleCenter;
+        RectTransform noobTxtRect = noobTxtObj.GetComponent<RectTransform>();
+        noobTxtRect.anchorMin = Vector2.zero;
+        noobTxtRect.anchorMax = Vector2.one;
+        noobTxtRect.sizeDelta = Vector2.zero;
+
         dynamicCanvas = uiContainer;
+        CreateMainMenu(existingCanvas, uiFont);
+    }
+
+    private void CreateMainMenu(Canvas canvas, Font font)
+    {
+        if (mainMenuOverlay != null) return;
+
+        // Pause the player controls dynamically instead of Time.timeScale to prevent coroutine locks
+        if (player == null)
+        {
+            player = GameManager.Instance != null ? GameManager.Instance.player : null;
+            if (player == null) player = FindObjectOfType<Player>();
+        }
+        if (player != null)
+        {
+            player.PlayerPause();
+        }
+
+        mainMenuOverlay = new GameObject("MainMenuOverlay");
+        mainMenuOverlay.transform.SetParent(canvas.transform, false);
+
+        RectTransform overlayRect = mainMenuOverlay.AddComponent<RectTransform>();
+        overlayRect.anchorMin = Vector2.zero;
+        overlayRect.anchorMax = Vector2.one;
+        overlayRect.sizeDelta = Vector2.zero;
+
+        // Dark background image
+        Image bgImage = mainMenuOverlay.AddComponent<Image>();
+        bgImage.color = new Color(0.08f, 0.08f, 0.1f, 0.98f);
+
+        // Title text
+        GameObject titleObj = new GameObject("MenuTitle");
+        titleObj.transform.SetParent(mainMenuOverlay.transform, false);
+        Text titleText = titleObj.AddComponent<Text>();
+        titleText.font = font;
+        titleText.fontSize = 28;
+        titleText.fontStyle = FontStyle.Bold;
+        titleText.color = Color.white;
+        titleText.text = "ADAPTIVE ROGUELITE ENGINE";
+        titleText.alignment = TextAnchor.MiddleCenter;
+
+        RectTransform titleRect = titleObj.GetComponent<RectTransform>();
+        titleRect.anchorMin = new Vector2(0.5f, 0.7f);
+        titleRect.anchorMax = new Vector2(0.5f, 0.8f);
+        titleRect.pivot = new Vector2(0.5f, 0.5f);
+        titleRect.sizeDelta = new Vector2(600f, 60f);
+
+        var titleOutline = titleObj.AddComponent<Outline>();
+        titleOutline.effectColor = Color.black;
+        titleOutline.effectDistance = new Vector2(2f, -2f);
+
+        // Subtitle/Prompt text
+        GameObject subObj = new GameObject("MenuSubtitle");
+        subObj.transform.SetParent(mainMenuOverlay.transform, false);
+        Text subText = subObj.AddComponent<Text>();
+        subText.font = font;
+        subText.fontSize = 14;
+        subText.color = Color.gray;
+        subText.text = "Оберіть режим керування для старту:\n(Клікніть мишкою або натисніть відповідну цифру 1, 2 чи 3)";
+        subText.alignment = TextAnchor.MiddleCenter;
+
+        RectTransform subRect = subObj.GetComponent<RectTransform>();
+        subRect.anchorMin = new Vector2(0.5f, 0.58f);
+        subRect.anchorMax = new Vector2(0.5f, 0.65f);
+        subRect.pivot = new Vector2(0.5f, 0.5f);
+        subRect.sizeDelta = new Vector2(600f, 60f);
+
+        // 1. Pro AI Button
+        CreateMenuButton(mainMenuOverlay.transform, "ProButton", "1. Авто гравець ПРО", new Vector2(0.5f, 0.45f), font, new Color(0.8f, 0.45f, 0.0f, 0.9f), () => {
+            StartGameWithMode(Player.PlayerControlMode.AI_Pro);
+        });
+
+        // 2. Noob AI Button
+        CreateMenuButton(mainMenuOverlay.transform, "NoobButton", "2. Авто гравець слабкий", new Vector2(0.5f, 0.32f), font, new Color(0.8f, 0.15f, 0.15f, 0.9f), () => {
+            StartGameWithMode(Player.PlayerControlMode.AI_Noob);
+        });
+
+        // 3. Human Button
+        CreateMenuButton(mainMenuOverlay.transform, "HumanButton", "3. Ручна гра", new Vector2(0.5f, 0.19f), font, new Color(0.15f, 0.55f, 0.15f, 0.9f), () => {
+            StartGameWithMode(Player.PlayerControlMode.Human);
+        });
+    }
+
+    private GameObject CreateMenuButton(Transform parent, string name, string text, Vector2 anchorPos, Font font, Color bgColor, System.Action onClickAction)
+    {
+        GameObject btnObj = new GameObject(name);
+        btnObj.transform.SetParent(parent, false);
+
+        Image img = btnObj.AddComponent<Image>();
+        img.color = bgColor;
+
+        Button btn = btnObj.AddComponent<Button>();
+        btn.onClick.AddListener(() => onClickAction());
+
+        RectTransform rect = btnObj.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(anchorPos.x, anchorPos.y);
+        rect.anchorMax = new Vector2(anchorPos.x, anchorPos.y);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = new Vector2(280f, 50f);
+
+        var outline = btnObj.AddComponent<Outline>();
+        outline.effectColor = Color.black;
+        outline.effectDistance = new Vector2(1.5f, -1.5f);
+
+        GameObject txtObj = new GameObject("Text");
+        txtObj.transform.SetParent(btnObj.transform, false);
+        Text txt = txtObj.AddComponent<Text>();
+        txt.text = text;
+        txt.font = font;
+        txt.fontSize = 16;
+        txt.fontStyle = FontStyle.Bold;
+        txt.color = Color.white;
+        txt.alignment = TextAnchor.MiddleCenter;
+
+        RectTransform txtRect = txtObj.GetComponent<RectTransform>();
+        txtRect.anchorMin = Vector2.zero;
+        txtRect.anchorMax = Vector2.one;
+        txtRect.sizeDelta = Vector2.zero;
+
+        return btnObj;
+    }
+
+    private void StartGameWithMode(Player.PlayerControlMode mode)
+    {
+        if (player == null)
+        {
+            player = GameManager.Instance != null ? GameManager.Instance.player : null;
+            if (player == null) player = FindObjectOfType<Player>();
+        }
+
+        // Hide overlay FIRST, so that player.PlayerResume() knows the menu is closed!
+        if (mainMenuOverlay != null)
+        {
+            mainMenuOverlay.SetActive(false);
+        }
+
+        if (player != null)
+        {
+            player.controlMode = mode;
+            player.PlayerResume();
+        }
+
+        // Play procedural start sound
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlaySound(600f, 0.15f, 0.2f);
+            AudioManager.Instance.PlaySound(900f, 0.3f, 0.2f);
+        }
+    }
+
+    public bool IsMainMenuActive()
+    {
+        return mainMenuOverlay != null && mainMenuOverlay.activeSelf;
     }
 
     public void PlayerUIInitialize()
@@ -187,6 +545,141 @@ public class UIManager : Singleton<UIManager>
         Coin.text = player.coins.ToString();
         weapon.sprite = player.GetGunNow().GetComponent<SpriteRenderer>().sprite;
         weapon.transform.Find("WeaponName").GetComponent<Text>().text = player.GetGunNow().name.ToString();
+    }
+
+    private GameObject pauseMenuOverlay;
+
+    public void TogglePauseMenu()
+    {
+        if (IsMainMenuActive()) return; // Don't show pause menu over main menu
+
+        if (pauseMenuOverlay == null)
+        {
+            CreatePauseMenu();
+        }
+
+        bool isActive = !pauseMenuOverlay.activeSelf;
+        pauseMenuOverlay.SetActive(isActive);
+
+        if (isActive)
+        {
+            if (player != null) player.PlayerPause();
+            Time.timeScale = 0f; // Pause game loop
+        }
+        else
+        {
+            if (player != null) player.PlayerResume();
+            Time.timeScale = 1f; // Resume game loop
+        }
+    }
+
+    private void CreatePauseMenu()
+    {
+        if (pauseMenuOverlay != null) return;
+
+        Canvas existingCanvas = GetComponentInParent<Canvas>() ?? FindObjectOfType<Canvas>();
+        if (existingCanvas == null) return;
+
+        Font uiFont = GetDefaultFont();
+
+        // Overlay background
+        pauseMenuOverlay = new GameObject("PauseMenuOverlay");
+        pauseMenuOverlay.transform.SetParent(existingCanvas.transform, false);
+
+        RectTransform overlayRect = pauseMenuOverlay.AddComponent<RectTransform>();
+        overlayRect.anchorMin = Vector2.zero;
+        overlayRect.anchorMax = Vector2.one;
+        overlayRect.sizeDelta = Vector2.zero;
+
+        Image bgImage = pauseMenuOverlay.AddComponent<Image>();
+        bgImage.color = new Color(0.05f, 0.05f, 0.1f, 0.85f); // Sleek dark overlay
+
+        // Pause Box Panel
+        GameObject boxObj = new GameObject("PauseBox");
+        boxObj.transform.SetParent(pauseMenuOverlay.transform, false);
+
+        RectTransform boxRect = boxObj.AddComponent<RectTransform>();
+        boxRect.anchorMin = new Vector2(0.5f, 0.5f);
+        boxRect.anchorMax = new Vector2(0.5f, 0.5f);
+        boxRect.pivot = new Vector2(0.5f, 0.5f);
+        boxRect.sizeDelta = new Vector2(300f, 320f);
+
+        Image boxImg = boxObj.AddComponent<Image>();
+        boxImg.color = new Color(0.1f, 0.1f, 0.18f, 0.95f);
+        
+        var outline = boxObj.AddComponent<Outline>();
+        outline.effectColor = Color.cyan;
+        outline.effectDistance = new Vector2(1.5f, -1.5f);
+
+        // Title
+        GameObject titleObj = new GameObject("PauseTitle");
+        titleObj.transform.SetParent(boxObj.transform, false);
+        Text titleTxt = titleObj.AddComponent<Text>();
+        titleTxt.text = "ПАУЗА";
+        titleTxt.font = uiFont;
+        titleTxt.fontSize = 24;
+        titleTxt.fontStyle = FontStyle.Bold;
+        titleTxt.color = Color.white;
+        titleTxt.alignment = TextAnchor.MiddleCenter;
+
+        RectTransform titleRect = titleObj.GetComponent<RectTransform>();
+        titleRect.anchorMin = new Vector2(0f, 0.8f);
+        titleRect.anchorMax = new Vector2(1f, 0.95f);
+        titleRect.sizeDelta = Vector2.zero;
+
+        // Button 1: Resume
+        GameObject resumeBtn = CreateMenuButton(boxObj.transform, "ResumeBtn", "Продовжити", new Vector2(0f, 60f), uiFont, new Color(0.15f, 0.4f, 0.15f, 0.9f), () => {
+            TogglePauseMenu();
+        });
+        RectTransform resRect = resumeBtn.GetComponent<RectTransform>();
+        resRect.anchorMin = new Vector2(0.5f, 0.5f);
+        resRect.anchorMax = new Vector2(0.5f, 0.5f);
+        resRect.anchoredPosition = new Vector2(0f, 60f);
+        resRect.sizeDelta = new Vector2(240f, 40f);
+
+        // Button 2: Tutorial
+        GameObject tutBtn = CreateMenuButton(boxObj.transform, "TutorialBtn", "Навчання (5 кімнат)", new Vector2(0f, 0f), uiFont, new Color(0.15f, 0.25f, 0.5f, 0.9f), () => {
+            GameManager.Instance.isTutorialMode = true;
+            Time.timeScale = 1f;
+            pauseMenuOverlay.SetActive(false);
+
+            // Reload the level using the SetActive(false)/SetActive(true) pattern
+            GameManager.Instance.depth = 0;
+            GameManager.Instance.level.gameObject.SetActive(false);
+            if (player != null) player.transform.position = new Vector3(0, 0, 0);
+            GameManager.Instance.myCamera.transform.position = new Vector3(0, 0, -10);
+            GameManager.Instance.level.gameObject.SetActive(true);
+
+            if (AdaptiveDifficultyManager.Instance != null)
+            {
+                AdaptiveDifficultyManager.Instance.ResetPlaythroughStats();
+            }
+            if (player != null) player.PlayerResume();
+        });
+        RectTransform tutRect = tutBtn.GetComponent<RectTransform>();
+        tutRect.anchorMin = new Vector2(0.5f, 0.5f);
+        tutRect.anchorMax = new Vector2(0.5f, 0.5f);
+        tutRect.anchoredPosition = new Vector2(0f, 5f);
+        tutRect.sizeDelta = new Vector2(240f, 40f);
+
+        // Button 3: Main Menu
+        GameObject mainBtn = CreateMenuButton(boxObj.transform, "MainMenuBtn", "Головне меню", new Vector2(0f, -60f), uiFont, new Color(0.4f, 0.15f, 0.15f, 0.9f), () => {
+            Time.timeScale = 1f;
+            pauseMenuOverlay.SetActive(false);
+            if (mainMenuOverlay != null)
+            {
+                mainMenuOverlay.SetActive(true);
+            }
+            if (player != null) player.PlayerPause();
+        });
+        RectTransform mainRect = mainBtn.GetComponent<RectTransform>();
+        mainRect.anchorMin = new Vector2(0.5f, 0.5f);
+        mainRect.anchorMax = new Vector2(0.5f, 0.5f);
+        mainRect.anchoredPosition = new Vector2(0f, -50f);
+        mainRect.sizeDelta = new Vector2(240f, 40f);
+
+        // Initially hide
+        pauseMenuOverlay.SetActive(false);
     }
 }
 

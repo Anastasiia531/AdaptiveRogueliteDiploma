@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -27,6 +27,12 @@ public class Pistol : Gun
 
         // GameObject bullet = Instantiate(bulletPrefab, muzzlePos.position, Quaternion.identity);
         float angel = 10f;
+        if (!isPlayer && AdaptiveDifficultyManager.Instance != null)
+        {
+            // If SkillIndex is 0 (easy), spread is wider (18f).
+            // If SkillIndex is 1 (hard), spread is tighter (4f).
+            angel = Mathf.Lerp(18f, 4f, AdaptiveDifficultyManager.Instance.SkillIndex);
+        }
         int medium = num / 2;
 
         for (int i = 0; i < num; i++)

@@ -59,7 +59,17 @@ public class ChallengeRoom : Room
                 if (dTrans != null)
                 {
                     Animator anim = dTrans.GetComponent<Animator>();
-                    if (anim != null) anim.Play("DoorClose");
+                    if (anim != null && anim.runtimeAnimatorController != null)
+                    {
+                        try
+                        {
+                            anim.Play("DoorClose");
+                        }
+                        catch (System.Exception ex)
+                        {
+                            Debug.LogWarning("Could not play DoorClose animation: " + ex.Message);
+                        }
+                    }
                 }
             }
         }
@@ -78,6 +88,15 @@ public class ChallengeRoom : Room
         if (AdaptiveDifficultyManager.Instance != null)
         {
             AdaptiveDifficultyManager.Instance.LogChallengeResult(success);
+        }
+
+        // Give weaker players a temporary super weapon boost on challenge completion
+        if (AdaptiveDifficultyManager.Instance != null && AdaptiveDifficultyManager.Instance.SkillIndex < 0.45f)
+        {
+            if (GameManager.Instance != null && GameManager.Instance.player != null)
+            {
+                GameManager.Instance.player.EnableSuperWeapon(35f);
+            }
         }
 
         // 2. Log to SQLite database local analytics

@@ -59,8 +59,20 @@ public class SBsuizhiyuan : Monster
         }
         if (timer < 0)
         {
-            // 召唤小怪
-            GameObject instance = (GameObject)Instantiate(monsters[UnityEngine.Random.Range(0, monsters.Length)], transform.parent);
+            // 召唤小怪 (Count active minions in the boss room to prevent infinite buildup)
+            int activeMinionsCount = 0;
+            foreach (Transform child in transform.parent)
+            {
+                if (child != null && child.GetComponent<Monster>() != null && child.gameObject != gameObject)
+                {
+                    activeMinionsCount++;
+                }
+            }
+
+            if (activeMinionsCount < 5)
+            {
+                GameObject instance = (GameObject)Instantiate(monsters[UnityEngine.Random.Range(0, monsters.Length)], transform.parent);
+            }
             lookAround = false;
             timer = generateTime;
         }

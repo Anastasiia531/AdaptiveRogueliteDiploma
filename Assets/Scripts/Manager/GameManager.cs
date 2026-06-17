@@ -15,6 +15,7 @@ public class GameManager : Singleton<GameManager>
     public Level level;
 
     public int depth = 0;
+    public bool isTutorialMode = false;
 
     private void Start()
     {
@@ -23,7 +24,13 @@ public class GameManager : Singleton<GameManager>
 
     void LoadNewGame()
     {
+        isTutorialMode = false; // Start normal game by default
+        if (AdaptiveDifficultyManager.Instance != null)
+        {
+            AdaptiveDifficultyManager.Instance.ResetPlaythroughStats();
+        }
         player = Instantiate(playerPrefab);
+        player.gameObject.AddComponent<AIAutoplayController>();
         level = Instantiate(levelPrefab);
     }
 
@@ -31,8 +38,8 @@ public class GameManager : Singleton<GameManager>
     {
         depth += 1;
         
-        // Show story narration for the level just completed (depth - 1)
-        if (StoryManager.Instance != null && depth - 1 >= 1 && depth - 1 <= 5)
+        // Show story narration for the level just completed (depth - 1) ONLY in tutorial mode
+        if (isTutorialMode && StoryManager.Instance != null && depth - 1 >= 1 && depth - 1 <= 5)
         {
             StoryManager.Instance.ShowStory(depth - 1, ContinueLevelUp);
         }
@@ -44,6 +51,13 @@ public class GameManager : Singleton<GameManager>
 
     private void ContinueLevelUp()
     {
+        // If we were in tutorial mode, turn it off now that the level is cleared!
+        if (isTutorialMode)
+        {
+            isTutorialMode = false;
+            Debug.Log("DDA: Tutorial cleared. Transitioning to normal roguelite mode.");
+        }
+
         levelPrefab.roomNum += 2 * depth;
         levelPrefab.roomNum = Mathf.Clamp(levelPrefab.roomNum, 0, 12);
         level.gameObject.SetActive(false);

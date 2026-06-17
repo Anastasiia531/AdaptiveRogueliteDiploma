@@ -156,12 +156,43 @@ public class Room : MonoBehaviour
             GenerateGameObjectWithCoordinate(roomLayout.itemList[i].value1, roomLayout.itemList[i].value2, itemContainer);
         }
 
-        for (int i = 0; i < roomLayout.monsterList.Count; i++)
+        int baseCount = roomLayout.monsterList.Count;
+        int monsterSpawnCount = baseCount;
+
+        if (AdaptiveDifficultyManager.Instance != null && roomType != RoomType.Boss)
         {
-            GameObject monster;
-            if (roomType != RoomType.Boss) monster = level.pools.GetMonster(MonsterType.Minion);
-            else monster = level.pools.GetMonster(MonsterType.Boss);
-            GenerateGameObjectWithCoordinate(monster, roomLayout.monsterList[i], monsterContainer);
+            // Easy (SkillIndex=0): spawn 50% of monsters.
+            // Hard (SkillIndex=1): spawn 150% of monsters.
+            float multiplier = Mathf.Lerp(0.5f, 1.5f, AdaptiveDifficultyManager.Instance.SkillIndex);
+            monsterSpawnCount = Mathf.RoundToInt(baseCount * multiplier);
+            
+            // Safety cap: clamp between 1 and 12 to avoid empty combat rooms or infinite buildup.
+            if (baseCount > 0)
+            {
+                monsterSpawnCount = Mathf.Clamp(monsterSpawnCount, 1, 12);
+            }
+        }
+
+        for (int i = 0; i < monsterSpawnCount; i++)
+        {
+            GameObject monster = level.pools.GetMonster(roomType == RoomType.Boss ? MonsterType.Boss : MonsterType.Minion);
+            if (monster == null) continue;
+
+            Vector2 coordinate;
+            if (i < baseCount)
+            {
+                coordinate = roomLayout.monsterList[i];
+            }
+            else
+            {
+                // Generate a nearby spawn coordinate with a small safe offset
+                Vector2 baseCoord = roomLayout.monsterList[Random.Range(0, baseCount)];
+                coordinate = baseCoord + new Vector2(Random.Range(-0.8f, 0.8f), Random.Range(-0.8f, 0.8f));
+                coordinate.x = Mathf.Clamp(coordinate.x, -10f, 10f);
+                coordinate.y = Mathf.Clamp(coordinate.y, -5f, 5f);
+            }
+
+            GenerateGameObjectWithCoordinate(monster, coordinate, monsterContainer);
         }
 
         CheckOpenDoor();
@@ -265,6 +296,11 @@ public class Room : MonoBehaviour
                 GenerateRoomClearingReward();
             }
             isCleared = true;
+            if (AdaptiveDifficultyManager.Instance != null)
+            {
+                AdaptiveDifficultyManager.Instance.LogRoomClear();
+                AdaptiveDifficultyManager.Instance.OnRoomCleared();
+            }
         }
     }
 }

@@ -37,7 +37,17 @@ public class CombatRoom : Room
                 if (dTrans != null)
                 {
                     Animator anim = dTrans.GetComponent<Animator>();
-                    if (anim != null) anim.Play("DoorClose");
+                    if (anim != null && anim.runtimeAnimatorController != null)
+                    {
+                        try
+                        {
+                            anim.Play("DoorClose");
+                        }
+                        catch (System.Exception ex)
+                        {
+                            Debug.LogWarning("Could not play DoorClose animation: " + ex.Message);
+                        }
+                    }
                 }
             }
         }

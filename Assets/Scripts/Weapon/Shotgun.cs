@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -16,21 +16,28 @@ public class Shotgun : Gun
     {
         animator.SetTrigger("Shoot");
 
+        float angleToUse = bulletAngle;
+        if (!isPlayer && AdaptiveDifficultyManager.Instance != null)
+        {
+            // Easy: wider angle (25f), Hard: tighter angle (8f)
+            angleToUse = Mathf.Lerp(25f, 8f, AdaptiveDifficultyManager.Instance.SkillIndex);
+        }
+
         int median = num / 2;
         for (int i = 0; i < num; i++)
         {
             GameObject bullet = ObjectPool.Instance.GetObject(bulletPrefab);
             bullet.transform.position = muzzlePos.position;
 
+            bullet.GetComponent<Bullet>().isPlayerFlag = isPlayer;
             if (num % 2 == 1)
             {
-                bullet.GetComponent<Bullet>().SetSpeed(Quaternion.AngleAxis(bulletAngle * (i - median), Vector3.forward) * direction);
+                bullet.GetComponent<Bullet>().SetSpeed(Quaternion.AngleAxis(angleToUse * (i - median), Vector3.forward) * direction);
             }
             else
             {
-                bullet.GetComponent<Bullet>().SetSpeed(Quaternion.AngleAxis(bulletAngle * (i - median) + bulletAngle / 2, Vector3.forward) * direction);
+                bullet.GetComponent<Bullet>().SetSpeed(Quaternion.AngleAxis(angleToUse * (i - median) + angleToUse / 2, Vector3.forward) * direction);
             }
-            bullet.GetComponent<Bullet>().isPlayerFlag = isPlayer;
         }
 
 

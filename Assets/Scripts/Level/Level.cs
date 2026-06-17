@@ -89,6 +89,66 @@ public class Level : MonoBehaviour
     /// </summary>
     private void CreateRooms()
     {
+        if (AdaptiveDifficultyManager.Instance != null)
+        {
+            AdaptiveDifficultyManager.Instance.EvaluateSkillBeforeGeneration();
+        }
+
+        if (GameManager.Instance != null && GameManager.Instance.isTutorialMode)
+        {
+            // Clear old rooms
+            Array.Clear(roomArray, 0, roomArray.Length);
+            for (int i = 0; i < transform.childCount; i++)
+            {
+                Destroy(transform.GetChild(i).gameObject);
+            }
+
+            int outsetX = roomArray.GetLength(0) / 2;
+            int outsetY = roomArray.GetLength(1) / 2;
+
+            // Spawn 5 fixed rooms
+            Room sRoom = CreateRoom(new Vector2(outsetX, outsetY));
+            Room bRoom = CreateRoom(new Vector2(outsetX + 1, outsetY));
+            Room tRoom = CreateRoom(new Vector2(outsetX, outsetY - 1));
+            Room shRoom = CreateRoom(new Vector2(outsetX, outsetY + 1));
+            Room cRoom = CreateRoom(new Vector2(outsetX - 1, outsetY));
+
+            roomArray[outsetX, outsetY] = sRoom;
+            roomArray[outsetX + 1, outsetY] = bRoom;
+            roomArray[outsetX, outsetY - 1] = tRoom;
+            roomArray[outsetX, outsetY + 1] = shRoom;
+            roomArray[outsetX - 1, outsetY] = cRoom;
+
+            LinkDoors();
+
+            // Set fixed types
+            sRoom.roomType = RoomType.Start;
+            bRoom.roomType = RoomType.Boss;
+            tRoom.roomType = RoomType.Treasure;
+            shRoom.roomType = RoomType.Shop;
+            cRoom.roomType = RoomType.Challenge;
+
+            // Convert components
+            roomArray[outsetX, outsetY] = ConvertRoomComponent<CombatRoom>(sRoom);
+            currentRoom = roomArray[outsetX, outsetY];
+
+            roomArray[outsetX + 1, outsetY] = ConvertRoomComponent<CombatRoom>(bRoom);
+            roomArray[outsetX, outsetY - 1] = ConvertRoomComponent<SpecialtyRoom>(tRoom);
+            roomArray[outsetX, outsetY + 1] = ConvertRoomComponent<SpecialtyRoom>(shRoom);
+            roomArray[outsetX - 1, outsetY] = ConvertRoomComponent<ChallengeRoom>(cRoom);
+
+            RebuildNeighboringRooms();
+
+            foreach (Room room in roomArray)
+            {
+                if (room != null)
+                {
+                    room.Initialize();
+                }
+            }
+            return;
+        }
+
         //储存备选生成房间的位置列表
         List<Vector2> alternativeRoomList = new List<Vector2>();
         List<Vector2> hasBeenRemoveRoomList = new List<Vector2>();
@@ -442,6 +502,84 @@ public class Level : MonoBehaviour
             currentRoom.isArrived = true;
         }
 
+        if (AdaptiveDifficultyManager.Instance != null)
+        {
+            AdaptiveDifficultyManager.Instance.OnRoomEntered(currentRoom);
+        }
+
+        // Set top-left room task text
+        if (UIManager.Instance != null)
+        {
+            string taskStr = "КІМНАТА: Знайдіть вихід!";
+            switch (currentRoom.roomType)
+            {
+                case RoomType.Start:
+                    taskStr = "СТАРТОВА КІМНАТА: Знайдіть кімнату боса!";
+                    break;
+                case RoomType.Normal:
+                    taskStr = "БІЙ: Знищіть усіх ворогів!";
+                    break;
+                case RoomType.Boss:
+                    taskStr = "БОС: Переможіть головного ворога та знайдіть люк!";
+                    break;
+                case RoomType.Treasure:
+                    taskStr = "СКАРБНИЦЯ: Візьміть безкоштовний артефакт!";
+                    break;
+                case RoomType.Shop:
+                    taskStr = "МАГАЗИН: Купіть спорядження за монети!";
+                    break;
+                case RoomType.SafeRoom:
+                    taskStr = "СПОКІЙНА КІМНАТА: Відновіть сили та здоров'я!";
+                    break;
+                case RoomType.Challenge:
+                    string challName = currentRoom.GetType().Name;
+                    switch (challName)
+                    {
+                        case "GhostSurvivalChallenge":
+                            taskStr = "ВИПРОБУВАННЯ: Ухиляйтеся від привидів!";
+                            break;
+                        case "ThreeCardsMonte":
+                            taskStr = "ГРА: Знайдіть правильну карту з трьох!";
+                            break;
+                        case "QuickTileReaction":
+                            taskStr = "РЕАКЦІЯ: Наступайте лише на зелені плитки!";
+                            break;
+                        case "SequenceMemoryChallenge":
+                            taskStr = "ПАМ'ЯТЬ: Повторіть послідовність активації плит!";
+                            break;
+                        case "SacrificeAltar":
+                            taskStr = "ВІВТАР: Пожертвуйте HP заради цінних предметів!";
+                            break;
+                        case "RouletteWheel":
+                            taskStr = "РУЛЕТКА: Крутіть рулетку та випробуйте вдачу!";
+                            break;
+                        case "TimeMazeChallenge":
+                            taskStr = "ЛАБІРИНТ: Пройдіть лабіринт за обмежений час!";
+                            break;
+                        case "CobwebDodgeChallenge":
+                            taskStr = "СПРИТНІСТЬ: Ухиляйтеся від павутини та дійдіть до виходу!";
+                            break;
+                        case "ObserverRoom":
+                            taskStr = "ВИЖИВАННЯ: Не рухайтеся, коли очі спостерігача відчинені!";
+                            break;
+                        case "BombPushChallenge":
+                            taskStr = "ГОЛОВОЛОМКА: Штовхайте бомби, щоб розчистити шлях!";
+                            break;
+                        case "SkyTearsSurvivalChallenge":
+                            taskStr = "УХИЛЯННЯ: Уникайте сліз, що падають зі стелі!";
+                            break;
+                        case "ChangingSafeZones":
+                            taskStr = "ТАЙМІНГ: Встигніть стати у зелені безпечні зони!";
+                            break;
+                        default:
+                            taskStr = "ВИПРОБУВАННЯ: Виконайте завдання кімнати!";
+                            break;
+                    }
+                    break;
+            }
+            UIManager.Instance.SetRoomTaskText(taskStr);
+        }
+
         //更新小地图
         UI.miniMap.UpdateMiniMap(MoveDirection);
         // UpdateGridGraph();
@@ -470,7 +608,8 @@ public class Level : MonoBehaviour
         if (MoveDirection == Vector2.zero)
         {
             int currentDepth = GameManager.Instance != null ? GameManager.Instance.depth : 0;
-            if (StoryManager.Instance != null && currentDepth >= 0 && currentDepth <= 4)
+            bool isTutorial = GameManager.Instance != null && GameManager.Instance.isTutorialMode;
+            if (isTutorial && StoryManager.Instance != null && currentDepth >= 0 && currentDepth <= 4)
             {
                 StoryManager.Instance.ShowLevelTutorial(currentDepth, () => {
                     if (player != null) player.PlayerResume();

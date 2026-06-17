@@ -21,6 +21,24 @@ public class Player : MonoBehaviour, IsAttackable
     public int COIN;
     [HideInInspector]
     public float speed;
+    public enum PlayerControlMode { Human, AI_Pro, AI_Noob }
+    public PlayerControlMode controlMode = PlayerControlMode.Human;
+
+    [HideInInspector]
+    public bool isTemporarySuperWeapon = false;
+    [HideInInspector]
+    public float superWeaponTimer = 0f;
+
+    public void EnableSuperWeapon(float duration)
+    {
+        isTemporarySuperWeapon = true;
+        superWeaponTimer = duration;
+        if (UI != null)
+        {
+            UI.SetRoomTaskText("АКТИВОВАНО ТИМЧАСОВУ СУПЕР-ЗБРОЮ!");
+        }
+    }
+
     [HideInInspector]
     public bool isAbleSwitch;
     public bool isLive;
@@ -30,6 +48,13 @@ public class Player : MonoBehaviour, IsAttackable
     public int bulletNum = 1;
     public float shotTiming;
     public GunType initial;
+
+    [HideInInspector] public float aiHorizontal;
+    [HideInInspector] public float aiVertical;
+    [HideInInspector] public bool aiShootUp;
+    [HideInInspector] public bool aiShootDown;
+    [HideInInspector] public bool aiShootLeft;
+    [HideInInspector] public bool aiShootRight;
 
     [Header("自身 (Компоненти)")]
     float horizontal;
@@ -73,6 +98,18 @@ public class Player : MonoBehaviour, IsAttackable
 
     private void Update()
     {
+        if (isTemporarySuperWeapon)
+        {
+            superWeaponTimer -= Time.deltaTime;
+            if (superWeaponTimer <= 0)
+            {
+                isTemporarySuperWeapon = false;
+                if (UI != null)
+                {
+                    UI.SetRoomTaskText("ТИМЧАСОВА СУПЕР-ЗБРОЯ ЗАКІНЧИЛАСЬ!");
+                }
+            }
+        }
         if (Input.GetKey(KeyCode.O))
         {
             PlayerDeath();
@@ -96,52 +133,63 @@ public class Player : MonoBehaviour, IsAttackable
 
     void UpdateControl()
     {
-        if (Input.GetKey(KeyCode.UpArrow))
+        bool up = (controlMode == PlayerControlMode.Human) ? Input.GetKey(KeyCode.UpArrow) : aiShootUp;
+        bool down = (controlMode == PlayerControlMode.Human) ? Input.GetKey(KeyCode.DownArrow) : aiShootDown;
+        bool left = (controlMode == PlayerControlMode.Human) ? Input.GetKey(KeyCode.LeftArrow) : aiShootLeft;
+        bool right = (controlMode == PlayerControlMode.Human) ? Input.GetKey(KeyCode.RightArrow) : aiShootRight;
+
+        if (up)
         {
             LaunchBullet(KeyCode.UpArrow);
         }
-        else if (Input.GetKey(KeyCode.DownArrow))
+        else if (down)
         {
             LaunchBullet(KeyCode.DownArrow);
         }
-        else if (Input.GetKey(KeyCode.LeftArrow))
+        else if (left)
         {
             LaunchBullet(KeyCode.LeftArrow);
         }
-        else if (Input.GetKey(KeyCode.RightArrow))
+        else if (right)
         {
             LaunchBullet(KeyCode.RightArrow);
         }
         else
         {
-            Head.GetComponent<Animator>().SetBool("IsShooting", false);
+            if (headAnimator != null && headAnimator.gameObject.activeInHierarchy)
+            {
+                headAnimator.SetBool("IsShooting", false);
+            }
         }
     }
 
     void LaunchBullet(KeyCode key)
     {
         shotTiming += Time.deltaTime;
-        headAnimator.SetBool("IsShooting", true);
+        if (headAnimator != null && headAnimator.gameObject.activeInHierarchy)
+        {
+            headAnimator.SetBool("IsShooting", true);
+        }
         Gun Gun = guns[gunNum].GetComponent<Gun>();
 
         if (key == KeyCode.UpArrow)
         {
-            headAnimator.Play("HeadUp");
+            if (headAnimator != null && headAnimator.gameObject.activeInHierarchy) headAnimator.Play("HeadUp");
             Gun.shootDirection = new Vector2(0, 1);
         }
         else if (key == KeyCode.DownArrow)
         {
-            headAnimator.Play("HeadDown");
+            if (headAnimator != null && headAnimator.gameObject.activeInHierarchy) headAnimator.Play("HeadDown");
             Gun.shootDirection = new Vector2(0, -1);
         }
         else if (key == KeyCode.LeftArrow)
         {
-            headAnimator.Play("HeadLeft");
+            if (headAnimator != null && headAnimator.gameObject.activeInHierarchy) headAnimator.Play("HeadLeft");
             Gun.shootDirection = new Vector2(-1, 0);
         }
         else if (key == KeyCode.RightArrow)
         {
-            headAnimator.Play("HeadRight");
+            if (headAnimator != null && headAnimator.gameObject.activeInHierarchy) headAnimator.Play("HeadRight");
             Gun.shootDirection = new Vector2(1, 0);
         }
     }
@@ -195,8 +243,16 @@ public class Player : MonoBehaviour, IsAttackable
 
     void UpdateMovement()
     {
-        horizontal = Input.GetAxis("Horizontal");
-        vertical = Input.GetAxis("Vertical");
+        if (controlMode == PlayerControlMode.Human)
+        {
+            horizontal = Input.GetAxis("Horizontal");
+            vertical = Input.GetAxis("Vertical");
+        }
+        else
+        {
+            horizontal = aiHorizontal;
+            vertical = aiVertical;
+        }
 
         Vector2 move = new Vector2(horizontal, vertical);
 
@@ -243,6 +299,14 @@ public class Player : MonoBehaviour, IsAttackable
 
     public void PlayerResume()
     {
+        // Prevent unpausing player controls if the main menu overlay is active
+        if (UIManager.Instance != null && UIManager.Instance.IsMainMenuActive())
+        {
+            isControllable = false;
+            speed = 0f;
+            return;
+        }
+
         isControllable = true;
         if (SPEED > 0.001f)
         {
@@ -252,8 +316,8 @@ public class Player : MonoBehaviour, IsAttackable
         {
             speed = 3.0f; // Safe fallback speed if SPEED was somehow corrupted
         }
-        headAnimator.speed = 1;
-        bodyAnimator.speed = 1;
+        if (headAnimator != null) headAnimator.speed = 1;
+        if (bodyAnimator != null) bodyAnimator.speed = 1;
     }
 
     public void PlayerDeath()
@@ -370,6 +434,16 @@ public class Player : MonoBehaviour, IsAttackable
     }
 
     void OnTriggerEnter2D(Collider2D collider)
+    {
+        CheckDoorCollision(collider);
+    }
+
+    void OnTriggerStay2D(Collider2D collider)
+    {
+        CheckDoorCollision(collider);
+    }
+
+    private void CheckDoorCollision(Collider2D collider)
     {
         if (isControllable && collider.transform.CompareTag("Door"))
         {
