@@ -30,7 +30,6 @@ public class GameManager : Singleton<GameManager>
             AdaptiveDifficultyManager.Instance.ResetPlaythroughStats();
         }
         player = Instantiate(playerPrefab);
-        player.gameObject.AddComponent<AIAutoplayController>();
         level = Instantiate(levelPrefab);
     }
 

@@ -21,7 +21,7 @@ public class Player : MonoBehaviour, IsAttackable
     public int COIN;
     [HideInInspector]
     public float speed;
-    public enum PlayerControlMode { Human, AI_Pro, AI_Noob }
+    public enum PlayerControlMode { Human }
     public PlayerControlMode controlMode = PlayerControlMode.Human;
 
     [HideInInspector]
@@ -48,13 +48,6 @@ public class Player : MonoBehaviour, IsAttackable
     public int bulletNum = 1;
     public float shotTiming;
     public GunType initial;
-
-    [HideInInspector] public float aiHorizontal;
-    [HideInInspector] public float aiVertical;
-    [HideInInspector] public bool aiShootUp;
-    [HideInInspector] public bool aiShootDown;
-    [HideInInspector] public bool aiShootLeft;
-    [HideInInspector] public bool aiShootRight;
 
     [Header("自身 (Компоненти)")]
     float horizontal;
@@ -133,10 +126,10 @@ public class Player : MonoBehaviour, IsAttackable
 
     void UpdateControl()
     {
-        bool up = (controlMode == PlayerControlMode.Human) ? Input.GetKey(KeyCode.UpArrow) : aiShootUp;
-        bool down = (controlMode == PlayerControlMode.Human) ? Input.GetKey(KeyCode.DownArrow) : aiShootDown;
-        bool left = (controlMode == PlayerControlMode.Human) ? Input.GetKey(KeyCode.LeftArrow) : aiShootLeft;
-        bool right = (controlMode == PlayerControlMode.Human) ? Input.GetKey(KeyCode.RightArrow) : aiShootRight;
+        bool up = Input.GetKey(KeyCode.UpArrow);
+        bool down = Input.GetKey(KeyCode.DownArrow);
+        bool left = Input.GetKey(KeyCode.LeftArrow);
+        bool right = Input.GetKey(KeyCode.RightArrow);
 
         if (up)
         {
@@ -243,16 +236,8 @@ public class Player : MonoBehaviour, IsAttackable
 
     void UpdateMovement()
     {
-        if (controlMode == PlayerControlMode.Human)
-        {
-            horizontal = Input.GetAxis("Horizontal");
-            vertical = Input.GetAxis("Vertical");
-        }
-        else
-        {
-            horizontal = aiHorizontal;
-            vertical = aiVertical;
-        }
+        horizontal = Input.GetAxis("Horizontal");
+        vertical = Input.GetAxis("Vertical");
 
         Vector2 move = new Vector2(horizontal, vertical);
 

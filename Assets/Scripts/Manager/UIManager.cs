@@ -40,6 +40,13 @@ public class UIManager : Singleton<UIManager>
         miniMap.level = level;
         num.text = GameManager.Instance.depth.ToString();
         CreateDynamicUI();
+
+        // Play procedural start sound
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlaySound(600f, 0.15f, 0.2f);
+            AudioManager.Instance.PlaySound(900f, 0.3f, 0.2f);
+        }
     }
 
     public void initialize()
@@ -58,23 +65,6 @@ public class UIManager : Singleton<UIManager>
         {
             player = GameManager.Instance != null ? GameManager.Instance.player : null;
             if (player == null) player = FindObjectOfType<Player>();
-        }
-
-        // Failsafe keyboard selection when the Main Menu is active
-        if (IsMainMenuActive())
-        {
-            if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1))
-            {
-                StartGameWithMode(Player.PlayerControlMode.AI_Pro);
-            }
-            else if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Keypad2))
-            {
-                StartGameWithMode(Player.PlayerControlMode.AI_Noob);
-            }
-            else if (Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3))
-            {
-                StartGameWithMode(Player.PlayerControlMode.Human);
-            }
         }
 
         if (Input.GetKeyDown(KeyCode.Escape))
@@ -127,13 +117,6 @@ public class UIManager : Singleton<UIManager>
                 chalWin,
                 chalLose
             );
-        }
-
-        if (humanBtnImg != null && player != null)
-        {
-            humanBtnImg.color = player.controlMode == Player.PlayerControlMode.Human ? new Color(0.15f, 0.5f, 0.15f, 0.9f) : new Color(0.2f, 0.2f, 0.2f, 0.6f);
-            proBtnImg.color = player.controlMode == Player.PlayerControlMode.AI_Pro ? new Color(0.6f, 0.4f, 0.1f, 0.9f) : new Color(0.2f, 0.2f, 0.2f, 0.6f);
-            noobBtnImg.color = player.controlMode == Player.PlayerControlMode.AI_Noob ? new Color(0.6f, 0.15f, 0.15f, 0.9f) : new Color(0.2f, 0.2f, 0.2f, 0.6f);
         }
     }
 
@@ -297,170 +280,10 @@ public class UIManager : Singleton<UIManager>
         loadTxtRect.anchorMax = Vector2.one;
         loadTxtRect.sizeDelta = Vector2.zero;
 
-        // 4. Human Toggle Button
-        GameObject humBtnObj = new GameObject("HumanButton");
-        humBtnObj.transform.SetParent(uiContainer.transform, false);
-        humanBtnImg = humBtnObj.AddComponent<Image>();
-        Button humBtn = humBtnObj.AddComponent<Button>();
-        humBtn.onClick.AddListener(() => {
-            if (player != null) player.controlMode = Player.PlayerControlMode.Human;
-        });
-
-        RectTransform humRect = humBtnObj.GetComponent<RectTransform>();
-        humRect.anchorMin = new Vector2(0f, 0.30f);
-        humRect.anchorMax = new Vector2(1f, 0.42f);
-        humRect.sizeDelta = Vector2.zero;
-
-        GameObject humTxtObj = new GameObject("HumanText");
-        humTxtObj.transform.SetParent(humBtnObj.transform, false);
-        Text humTxt = humTxtObj.AddComponent<Text>();
-        humTxt.text = "ГРАВЕЦЬ (Клв)";
-        humTxt.font = uiFont;
-        humTxt.fontSize = 11;
-        humTxt.color = Color.white;
-        humTxt.alignment = TextAnchor.MiddleCenter;
-        RectTransform humTxtRect = humTxtObj.GetComponent<RectTransform>();
-        humTxtRect.anchorMin = Vector2.zero;
-        humTxtRect.anchorMax = Vector2.one;
-        humTxtRect.sizeDelta = Vector2.zero;
-
-        // 5. AI Pro Toggle Button
-        GameObject proBtnObj = new GameObject("ProButton");
-        proBtnObj.transform.SetParent(uiContainer.transform, false);
-        proBtnImg = proBtnObj.AddComponent<Image>();
-        Button proBtn = proBtnObj.AddComponent<Button>();
-        proBtn.onClick.AddListener(() => {
-            if (player != null) player.controlMode = Player.PlayerControlMode.AI_Pro;
-        });
-
-        RectTransform proRect = proBtnObj.GetComponent<RectTransform>();
-        proRect.anchorMin = new Vector2(0f, 0.15f);
-        proRect.anchorMax = new Vector2(1f, 0.27f);
-        proRect.sizeDelta = Vector2.zero;
-
-        GameObject proTxtObj = new GameObject("ProText");
-        proTxtObj.transform.SetParent(proBtnObj.transform, false);
-        Text proTxt = proTxtObj.AddComponent<Text>();
-        proTxt.text = "ШІ: ПРО (Pro)";
-        proTxt.font = uiFont;
-        proTxt.fontSize = 11;
-        proTxt.color = Color.white;
-        proTxt.alignment = TextAnchor.MiddleCenter;
-        RectTransform proTxtRect = proTxtObj.GetComponent<RectTransform>();
-        proTxtRect.anchorMin = Vector2.zero;
-        proTxtRect.anchorMax = Vector2.one;
-        proTxtRect.sizeDelta = Vector2.zero;
-
-        // 6. AI Noob Toggle Button
-        GameObject noobBtnObj = new GameObject("NoobButton");
-        noobBtnObj.transform.SetParent(uiContainer.transform, false);
-        noobBtnImg = noobBtnObj.AddComponent<Image>();
-        Button noobBtn = noobBtnObj.AddComponent<Button>();
-        noobBtn.onClick.AddListener(() => {
-            if (player != null) player.controlMode = Player.PlayerControlMode.AI_Noob;
-        });
-
-        RectTransform noobRect = noobBtnObj.GetComponent<RectTransform>();
-        noobRect.anchorMin = new Vector2(0f, 0.0f);
-        noobRect.anchorMax = new Vector2(1f, 0.12f);
-        noobRect.sizeDelta = Vector2.zero;
-
-        GameObject noobTxtObj = new GameObject("NoobText");
-        noobTxtObj.transform.SetParent(noobBtnObj.transform, false);
-        Text noobTxt = noobTxtObj.AddComponent<Text>();
-        noobTxt.text = "ШІ: СЛАБИЙ (Noob)";
-        noobTxt.font = uiFont;
-        noobTxt.fontSize = 11;
-        noobTxt.color = Color.white;
-        noobTxt.alignment = TextAnchor.MiddleCenter;
-        RectTransform noobTxtRect = noobTxtObj.GetComponent<RectTransform>();
-        noobTxtRect.anchorMin = Vector2.zero;
-        noobTxtRect.anchorMax = Vector2.one;
-        noobTxtRect.sizeDelta = Vector2.zero;
-
         dynamicCanvas = uiContainer;
-        CreateMainMenu(existingCanvas, uiFont);
     }
 
-    private void CreateMainMenu(Canvas canvas, Font font)
-    {
-        if (mainMenuOverlay != null) return;
 
-        // Pause the player controls dynamically instead of Time.timeScale to prevent coroutine locks
-        if (player == null)
-        {
-            player = GameManager.Instance != null ? GameManager.Instance.player : null;
-            if (player == null) player = FindObjectOfType<Player>();
-        }
-        if (player != null)
-        {
-            player.PlayerPause();
-        }
-
-        mainMenuOverlay = new GameObject("MainMenuOverlay");
-        mainMenuOverlay.transform.SetParent(canvas.transform, false);
-
-        RectTransform overlayRect = mainMenuOverlay.AddComponent<RectTransform>();
-        overlayRect.anchorMin = Vector2.zero;
-        overlayRect.anchorMax = Vector2.one;
-        overlayRect.sizeDelta = Vector2.zero;
-
-        // Dark background image
-        Image bgImage = mainMenuOverlay.AddComponent<Image>();
-        bgImage.color = new Color(0.08f, 0.08f, 0.1f, 0.98f);
-
-        // Title text
-        GameObject titleObj = new GameObject("MenuTitle");
-        titleObj.transform.SetParent(mainMenuOverlay.transform, false);
-        Text titleText = titleObj.AddComponent<Text>();
-        titleText.font = font;
-        titleText.fontSize = 28;
-        titleText.fontStyle = FontStyle.Bold;
-        titleText.color = Color.white;
-        titleText.text = "ADAPTIVE ROGUELITE ENGINE";
-        titleText.alignment = TextAnchor.MiddleCenter;
-
-        RectTransform titleRect = titleObj.GetComponent<RectTransform>();
-        titleRect.anchorMin = new Vector2(0.5f, 0.7f);
-        titleRect.anchorMax = new Vector2(0.5f, 0.8f);
-        titleRect.pivot = new Vector2(0.5f, 0.5f);
-        titleRect.sizeDelta = new Vector2(600f, 60f);
-
-        var titleOutline = titleObj.AddComponent<Outline>();
-        titleOutline.effectColor = Color.black;
-        titleOutline.effectDistance = new Vector2(2f, -2f);
-
-        // Subtitle/Prompt text
-        GameObject subObj = new GameObject("MenuSubtitle");
-        subObj.transform.SetParent(mainMenuOverlay.transform, false);
-        Text subText = subObj.AddComponent<Text>();
-        subText.font = font;
-        subText.fontSize = 14;
-        subText.color = Color.gray;
-        subText.text = "Оберіть режим керування для старту:\n(Клікніть мишкою або натисніть відповідну цифру 1, 2 чи 3)";
-        subText.alignment = TextAnchor.MiddleCenter;
-
-        RectTransform subRect = subObj.GetComponent<RectTransform>();
-        subRect.anchorMin = new Vector2(0.5f, 0.58f);
-        subRect.anchorMax = new Vector2(0.5f, 0.65f);
-        subRect.pivot = new Vector2(0.5f, 0.5f);
-        subRect.sizeDelta = new Vector2(600f, 60f);
-
-        // 1. Pro AI Button
-        CreateMenuButton(mainMenuOverlay.transform, "ProButton", "1. Авто гравець ПРО", new Vector2(0.5f, 0.45f), font, new Color(0.8f, 0.45f, 0.0f, 0.9f), () => {
-            StartGameWithMode(Player.PlayerControlMode.AI_Pro);
-        });
-
-        // 2. Noob AI Button
-        CreateMenuButton(mainMenuOverlay.transform, "NoobButton", "2. Авто гравець слабкий", new Vector2(0.5f, 0.32f), font, new Color(0.8f, 0.15f, 0.15f, 0.9f), () => {
-            StartGameWithMode(Player.PlayerControlMode.AI_Noob);
-        });
-
-        // 3. Human Button
-        CreateMenuButton(mainMenuOverlay.transform, "HumanButton", "3. Ручна гра", new Vector2(0.5f, 0.19f), font, new Color(0.15f, 0.55f, 0.15f, 0.9f), () => {
-            StartGameWithMode(Player.PlayerControlMode.Human);
-        });
-    }
 
     private GameObject CreateMenuButton(Transform parent, string name, string text, Vector2 anchorPos, Font font, Color bgColor, System.Action onClickAction)
     {
@@ -501,37 +324,9 @@ public class UIManager : Singleton<UIManager>
         return btnObj;
     }
 
-    private void StartGameWithMode(Player.PlayerControlMode mode)
-    {
-        if (player == null)
-        {
-            player = GameManager.Instance != null ? GameManager.Instance.player : null;
-            if (player == null) player = FindObjectOfType<Player>();
-        }
-
-        // Hide overlay FIRST, so that player.PlayerResume() knows the menu is closed!
-        if (mainMenuOverlay != null)
-        {
-            mainMenuOverlay.SetActive(false);
-        }
-
-        if (player != null)
-        {
-            player.controlMode = mode;
-            player.PlayerResume();
-        }
-
-        // Play procedural start sound
-        if (AudioManager.Instance != null)
-        {
-            AudioManager.Instance.PlaySound(600f, 0.15f, 0.2f);
-            AudioManager.Instance.PlaySound(900f, 0.3f, 0.2f);
-        }
-    }
-
     public bool IsMainMenuActive()
     {
-        return mainMenuOverlay != null && mainMenuOverlay.activeSelf;
+        return false;
     }
 
     public void PlayerUIInitialize()
