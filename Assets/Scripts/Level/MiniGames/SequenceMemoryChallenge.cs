@@ -36,6 +36,7 @@ public class SequenceMemoryChallenge : ChallengeRoom
             btnGo.transform.localPosition = positions[i];
 
             var sr = btnGo.AddComponent<SpriteRenderer>();
+            sr.sprite = CreateSquareSprite(Color.white, Color.black);
             sr.color = btnColors[i] * 0.5f; // Dim color initially
             sr.sortingOrder = 1;
 

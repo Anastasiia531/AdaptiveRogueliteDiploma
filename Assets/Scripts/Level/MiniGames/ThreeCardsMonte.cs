@@ -30,11 +30,7 @@ public class ThreeCardsMonte : ChallengeRoom
             ped.transform.localPosition = new Vector2(startX + i * 3f, 0f);
 
             var sr = ped.AddComponent<SpriteRenderer>();
-            // Use altar or standard sprite as card placeholder
-            if (level != null && level.pools != null)
-            {
-                sr.color = Color.cyan;
-            }
+            sr.sprite = CreateCardSprite(Color.blue);
             sr.sortingOrder = 4;
 
             // Trigger for player interaction

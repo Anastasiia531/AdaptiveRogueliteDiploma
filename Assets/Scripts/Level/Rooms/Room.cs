@@ -145,6 +145,75 @@ public class Room : MonoBehaviour
         }
     }
 
+    private bool IsInDoorSafetyZone(Vector2 coord, GameObject itemObj)
+    {
+        if (itemObj == null) return false;
+        
+        // Don't block collectible items, chests, pedestals, or transitions
+        string nameLower = itemObj.name.ToLower();
+        if (nameLower.Contains("pedestal") || 
+            nameLower.Contains("item") || 
+            nameLower.Contains("goods") || 
+            nameLower.Contains("chest") || 
+            nameLower.Contains("heart") || 
+            nameLower.Contains("key") || 
+            nameLower.Contains("coin") ||
+            nameLower.Contains("levelup") ||
+            nameLower.Contains("door"))
+        {
+            return false;
+        }
+
+        // 1. Center safety zone (radius of 1.8 units around the center)
+        if (Mathf.Abs(coord.x) < 1.8f && Mathf.Abs(coord.y) < 1.8f)
+        {
+            return true;
+        }
+
+        // 2. Door safety zones and corridors
+        for (int i = 0; i < doorList.Count; i++)
+        {
+            if (activeDoorList.Contains(doorList[i]))
+            {
+                DirectionType dir = (DirectionType)i;
+                // Up Door
+                if (dir == DirectionType.Up)
+                {
+                    // Door area: x in [-1.8, 1.8], y in [3.5, 7.5]
+                    if (Mathf.Abs(coord.x) < 1.8f && coord.y > 3.5f) return true;
+                    // Corridor to center: x in [-1.2, 1.2], y in [0, 3.5]
+                    if (Mathf.Abs(coord.x) < 1.2f && coord.y >= 0f && coord.y <= 3.5f) return true;
+                }
+                // Down Door
+                else if (dir == DirectionType.Down)
+                {
+                    // Door area: x in [-1.8, 1.8], y in [-7.5, -3.5]
+                    if (Mathf.Abs(coord.x) < 1.8f && coord.y < -3.5f) return true;
+                    // Corridor to center: x in [-1.2, 1.2], y in [-3.5, 0]
+                    if (Mathf.Abs(coord.x) < 1.2f && coord.y <= 0f && coord.y >= -3.5f) return true;
+                }
+                // Right Door
+                else if (dir == DirectionType.Right)
+                {
+                    // Door area: x in [8.5, 12.5], y in [-1.8, 1.8]
+                    if (coord.x > 8.5f && Mathf.Abs(coord.y) < 1.8f) return true;
+                    // Corridor to center: x in [0, 8.5], y in [-1.2, 1.2]
+                    if (coord.x >= 0f && coord.x <= 8.5f && Mathf.Abs(coord.y) < 1.2f) return true;
+                }
+                // Left Door
+                else if (dir == DirectionType.Left)
+                {
+                    // Door area: x in [-12.5, -8.5], y in [-1.8, 1.8]
+                    if (coord.x < -8.5f && Mathf.Abs(coord.y) < 1.8f) return true;
+                    // Corridor to center: x in [-8.5, 0], y in [-1.2, 1.2]
+                    if (coord.x <= 0f && coord.x >= -8.5f && Mathf.Abs(coord.y) < 1.2f) return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>
     /// 根据房间布局文件roomLayout 生成内容
     /// </summary>
@@ -153,7 +222,32 @@ public class Room : MonoBehaviour
 
         for (int i = 0; i < roomLayout.itemList.Count; i++)
         {
-            GenerateGameObjectWithCoordinate(roomLayout.itemList[i].value1, roomLayout.itemList[i].value2, itemContainer);
+            GameObject itemObj = roomLayout.itemList[i].value1;
+            Vector2 finalCoord = roomLayout.itemList[i].value2;
+            
+            if (itemObj != null && !itemObj.name.Contains("Pedestal") && !itemObj.name.Contains("Item") && !itemObj.name.Contains("Goods"))
+            {
+                // Add a small random offset to obstacles/decorations so layouts are not identical
+                finalCoord += new Vector2(UnityEngine.Random.Range(-0.25f, 0.25f), UnityEngine.Random.Range(-0.25f, 0.25f));
+            }
+
+            if (IsInDoorSafetyZone(finalCoord, itemObj))
+            {
+                continue; // Skip spawning obstacles in active door corridors/areas
+            }
+
+            GameObject spawned = GenerateGameObjectWithCoordinate(itemObj, finalCoord, itemContainer);
+
+            // Flip sprites randomly for obstacles/decorations to increase visual diversity
+            if (spawned != null && itemObj != null && !itemObj.name.Contains("Pedestal") && !itemObj.name.Contains("Item") && !itemObj.name.Contains("Goods"))
+            {
+                var spriteRenderer = spawned.GetComponent<SpriteRenderer>();
+                if (spriteRenderer != null)
+                {
+                    spriteRenderer.flipX = UnityEngine.Random.value > 0.5f;
+                    spriteRenderer.flipY = UnityEngine.Random.value > 0.5f;
+                }
+            }
         }
 
         int baseCount = roomLayout.monsterList.Count;
@@ -291,7 +385,20 @@ public class Room : MonoBehaviour
         if (monsterContainer.childCount == 0 && !isCleared)
         {
             OpenActivatedDoor();
-            if (roomLayout.isGenerateReward)
+            
+            bool shouldSpawnReward = true;
+            if (roomType != RoomType.Boss)
+            {
+                float rewardProb = 0.5f; // 50% default
+                if (AdaptiveDifficultyManager.Instance != null)
+                {
+                    // Scale between 75% (poor play) and 30% (good play)
+                    rewardProb = Mathf.Lerp(0.75f, 0.30f, AdaptiveDifficultyManager.Instance.SkillIndex);
+                }
+                shouldSpawnReward = UnityEngine.Random.value <= rewardProb;
+            }
+
+            if (roomLayout.isGenerateReward && shouldSpawnReward)
             {
                 GenerateRoomClearingReward();
             }

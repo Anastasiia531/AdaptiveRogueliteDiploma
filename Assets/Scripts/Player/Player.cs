@@ -189,12 +189,66 @@ public class Player : MonoBehaviour, IsAttackable
 
     public void SwitchToGun(GunType gunType)
     {
+        if (gunType == GunType.Python) return;
+        bool isFirstTime = !isGunAvailable[(int)gunType];
         isGunAvailable[(int)gunType] = true;
         guns[gunNum].SetActive(false);
         gunNum = (int)gunType;
         guns[gunNum].GetComponent<Gun>().isPlayer = true;
         guns[gunNum].GetComponent<Gun>().NUM = bulletNum;
         guns[gunNum].SetActive(true);
+
+        if (isFirstTime)
+        {
+            ShowWeaponDescription(gunType);
+        }
+    }
+
+    private void ShowWeaponDescription(GunType type)
+    {
+        string desc = "";
+        switch (type)
+        {
+            case GunType.Machine:
+                desc = "ЗБРОЯ: Машинний код (Автомат) — швидкострільний потік куль.";
+                break;
+            case GunType.Python:
+                desc = "ЗБРОЯ: Мова Python (Ракетниця) — вибухові ракети з великою шкодою.";
+                break;
+            case GunType.Java:
+                desc = "ЗБРОЯ: Мова Java (Гвинтівка) — висока точність і дальність пострілу.";
+                break;
+            case GunType.SQL:
+                desc = "ЗБРОЯ: Мова SQL (Лазер) — миттєві світлові промені.";
+                break;
+            case GunType.Cpp:
+                desc = "ЗБРОЯ: Мова C++ (Дробовик) — велика шкода зблизька та розсіювання.";
+                break;
+        }
+
+        if (UI != null && !string.IsNullOrEmpty(desc))
+        {
+            StartCoroutine(DisplayWeaponDescriptionCoroutine(desc));
+        }
+    }
+
+    private IEnumerator DisplayWeaponDescriptionCoroutine(string desc)
+    {
+        if (UI != null)
+        {
+            UI.SetRoomTaskText(desc);
+        }
+        yield return new WaitForSeconds(5.0f);
+        if (UI != null && level != null && level.currentRoom != null)
+        {
+            string roomStr = "КІМНАТА: ";
+            if (level.currentRoom.roomType == RoomType.Boss) roomStr += "Бій з Босом!";
+            else if (level.currentRoom.roomType == RoomType.Challenge) roomStr += "Випробування!";
+            else if (level.currentRoom.roomType == RoomType.Shop) roomStr += "Магазин.";
+            else if (level.currentRoom.roomType == RoomType.Treasure) roomStr += "Скарбниця.";
+            else roomStr += level.currentRoom.isCleared ? "Зачищено!" : "Знищіть ворогів!";
+            UI.SetRoomTaskText(roomStr);
+        }
     }
 
     public Transform GetGunNow()
@@ -321,6 +375,7 @@ public class Player : MonoBehaviour, IsAttackable
         speed = SPEED;
         coins = COIN;
         isGunAvailable = new bool[guns.Length];
+        if (initial == GunType.Python) initial = GunType.Machine;
         SwitchToGun(initial);
         shotTiming = 0;
 

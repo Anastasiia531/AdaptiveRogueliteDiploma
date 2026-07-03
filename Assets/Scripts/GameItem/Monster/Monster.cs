@@ -34,28 +34,39 @@ public class Monster : GameItem, IsAttackable
 
         float totalMultiplier = ddaMult * depthMult;
 
-        // Scale down HP globally to 15% of the original value for very small HP numbers
-        float hpScale = 0.15f;
-        bool isBoss = name.Contains("Boss") || name.Contains("SBsuizhiyuan");
+        bool isBoss = name.Contains("Boss") || name.Contains("SBsuizhiyuan") || name.Contains("boss");
+        // Scale down HP globally (bosses scale much higher to be stronger)
+        float hpScale = isBoss ? 0.55f : 0.22f;
         
         HP = HP * totalMultiplier * hpScale;
 
         if (isBoss)
         {
-            HP = Mathf.Clamp(HP, 15f, 35f);
+            HP = Mathf.Clamp(HP, 45f, 95f);
         }
         else
         {
-            HP = Mathf.Clamp(HP, 2f, 8f);
+            HP = Mathf.Clamp(HP, 3f, 12f);
         }
         HP = Mathf.Round(HP);
 
-        // Use reflection to scale speed field if it exists in the subclass
+        // Use reflection to scale speed field if it exists in the subclass (bosses are faster)
         System.Reflection.FieldInfo speedField = GetType().GetField("speed");
         if (speedField != null)
         {
             float curSpeed = (float)speedField.GetValue(this);
-            speedField.SetValue(this, curSpeed * (0.8f + AdaptiveDifficultyManager.Instance.SkillIndex * 0.4f));
+            float speedMult = isBoss ? 1.3f : 1.0f;
+            speedField.SetValue(this, curSpeed * speedMult * (0.8f + AdaptiveDifficultyManager.Instance.SkillIndex * 0.4f));
+        }
+
+        // Use reflection to scale damage field if it exists in the subclass (bosses deal double damage)
+        System.Reflection.FieldInfo damageField = GetType().GetField("damage");
+        if (damageField != null)
+        {
+            float curDamage = (float)damageField.GetValue(this);
+            float dmgMult = isBoss ? 2.0f : 1.25f;
+            float scaledDamage = curDamage * dmgMult * (0.8f + AdaptiveDifficultyManager.Instance.SkillIndex * 0.4f);
+            damageField.SetValue(this, Mathf.Max(1f, Mathf.Round(scaledDamage)));
         }
     }
     protected virtual void Update()

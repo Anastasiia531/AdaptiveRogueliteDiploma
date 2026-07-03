@@ -60,6 +60,7 @@ public class TimeMazeChallenge : ChallengeRoom
             wall.transform.localPosition = wallPositions[i];
 
             var sr = wall.AddComponent<SpriteRenderer>();
+            sr.sprite = CreateSquareSprite(Color.white, Color.black);
             sr.color = new Color(0.3f, 0.3f, 0.4f, 1f); // Dark stone color
             sr.sortingOrder = 3;
 
@@ -77,6 +78,7 @@ public class TimeMazeChallenge : ChallengeRoom
         finishZone.transform.localPosition = new Vector2(8f, 0f);
 
         var finishSr = finishZone.AddComponent<SpriteRenderer>();
+        finishSr.sprite = CreateCircleSprite(Color.white, Color.black);
         finishSr.color = Color.green * 0.8f;
         finishSr.sortingOrder = 1;
         finishZone.transform.localScale = new Vector3(1.5f, 1.5f, 1f);

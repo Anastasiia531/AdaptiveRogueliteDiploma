@@ -57,8 +57,8 @@ public class GameManager : Singleton<GameManager>
             Debug.Log("DDA: Tutorial cleared. Transitioning to normal roguelite mode.");
         }
 
-        levelPrefab.roomNum += 2 * depth;
-        levelPrefab.roomNum = Mathf.Clamp(levelPrefab.roomNum, 0, 12);
+        level.roomNum = 7 + 2 * depth;
+        level.roomNum = Mathf.Clamp(level.roomNum, 7, 15);
         level.gameObject.SetActive(false);
         myCamera.transform.position = new Vector3(0, 0, -10);
         player.transform.position = new Vector3(0, 0, 0);

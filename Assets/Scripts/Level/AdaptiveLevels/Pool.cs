@@ -59,9 +59,28 @@ public class Pool : MonoBehaviour
         treasureRoom.AddRange(Resources.LoadAll<RoomLayout>(roomLayoutFileFolderPath[3]));
         shopRoom.AddRange(Resources.LoadAll<RoomLayout>(roomLayoutFileFolderPath[4]));
 
-        TreasureRoomItemList.AddRange(TreasureRoomItemPool.itemList);
-        BossRoomItemList.AddRange(BossRoomItemPool.itemList);
-        ShopItemList.AddRange(ShopItemPool.itemList);
+        // Load items and filter out Python completely so it is never spawned!
+        foreach (var item in TreasureRoomItemPool.itemList)
+        {
+            if (item != null && !item.name.Contains("Python") && item.GetComponent<Python>() == null)
+            {
+                TreasureRoomItemList.Add(item);
+            }
+        }
+        foreach (var item in BossRoomItemPool.itemList)
+        {
+            if (item != null && !item.name.Contains("Python") && item.GetComponent<Python>() == null)
+            {
+                BossRoomItemList.Add(item);
+            }
+        }
+        foreach (var item in ShopItemPool.itemList)
+        {
+            if (item != null && !item.name.Contains("Python") && item.GetComponent<Python>() == null)
+            {
+                ShopItemList.Add(item);
+            }
+        }
     }
 
     public RoomLayout GetRoomLayout(RoomType type)
@@ -147,6 +166,48 @@ public class Pool : MonoBehaviour
             default:
                 Item = null;
                 break;
+        }
+
+        // DDA / Isaac adjustment: make weapons rarer and scale based on player performance (DDA)
+        if (Item != null && Item is Weapon)
+        {
+            float weaponChance = 0.20f; // 20% default chance to keep the weapon
+            if (AdaptiveDifficultyManager.Instance != null)
+            {
+                // plays well (SkillIndex=1) -> weapons are even rarer (10% chance)
+                // plays poorly (SkillIndex=0) -> weapons are more common (35% chance)
+                weaponChance = Mathf.Lerp(0.35f, 0.10f, AdaptiveDifficultyManager.Instance.SkillIndex);
+            }
+
+            if (Random.value > weaponChance)
+            {
+                // Replace with a passive item from the pool!
+                List<Item> passives = new List<Item>();
+                List<Item> sourcePool = null;
+                if (type == ItemPoolType.TreasureRoom) sourcePool = TreasureRoomItemList;
+                else if (type == ItemPoolType.BossRoom) sourcePool = BossRoomItemList;
+                else if (type == ItemPoolType.Shop) sourcePool = ShopItemList;
+
+                if (sourcePool != null)
+                {
+                    foreach (Item candidate in sourcePool)
+                    {
+                        if (candidate != null && !(candidate is Weapon))
+                        {
+                            passives.Add(candidate);
+                        }
+                    }
+                }
+
+                if (passives.Count > 0)
+                {
+                    Item replacement = passives[Random.Range(0, passives.Count)];
+                    sourcePool.Remove(replacement);
+                    // Put the weapon back so it can be rolled later
+                    sourcePool.Add(Item);
+                    Item = replacement;
+                }
+            }
         }
         return Item;
     }

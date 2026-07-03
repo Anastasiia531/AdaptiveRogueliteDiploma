@@ -71,6 +71,21 @@ public class MiniMap : MonoBehaviour
                     case RoomType.Shop:
                         Instantiate(miniIconShop, cell.transform);
                         break;
+                    case RoomType.Challenge:
+                        GameObject textObj = new GameObject("MiniIconChallenge");
+                        textObj.transform.SetParent(cell.transform, false);
+                        Text iconText = textObj.AddComponent<Text>();
+                        iconText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+                        if (iconText.font == null) iconText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                        iconText.text = "★";
+                        iconText.fontSize = 18;
+                        iconText.color = new Color(0.9f, 0.4f, 0.9f, 1f); // Purple
+                        iconText.alignment = TextAnchor.MiddleCenter;
+                        RectTransform textRect = textObj.GetComponent<RectTransform>();
+                        textRect.anchorMin = Vector2.zero;
+                        textRect.anchorMax = Vector2.one;
+                        textRect.sizeDelta = Vector2.zero;
+                        break;
                     default:
                         break;
                 }

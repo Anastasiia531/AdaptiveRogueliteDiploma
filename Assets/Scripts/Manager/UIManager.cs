@@ -38,7 +38,7 @@ public class UIManager : Singleton<UIManager>
         player = GameManager.Instance.player;
         hp.player = player;
         miniMap.level = level;
-        num.text = GameManager.Instance.depth.ToString();
+        num.text = (GameManager.Instance.depth + 1).ToString();
         CreateDynamicUI();
 
         // Play procedural start sound
@@ -55,7 +55,7 @@ public class UIManager : Singleton<UIManager>
         player = GameManager.Instance.player;
         hp.player = player;
         miniMap.level = level;
-        num.text = GameManager.Instance.depth.ToString();
+        num.text = (GameManager.Instance.depth + 1).ToString();
         CreateDynamicUI();
     }
 

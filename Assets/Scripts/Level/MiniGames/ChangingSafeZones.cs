@@ -25,6 +25,7 @@ public class ChangingSafeZones : ChallengeRoom
         safeZoneObj.transform.localPosition = Vector2.zero; // Start at center
 
         var sr = safeZoneObj.AddComponent<SpriteRenderer>();
+        sr.sprite = CreateCircleSprite(Color.white, Color.black);
         sr.color = new Color(0f, 1f, 0f, 0.3f); // Semi-transparent green
         sr.sortingOrder = 1;
 

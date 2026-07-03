@@ -18,7 +18,7 @@ public class RouletteWheel : ChallengeRoom
         machineVisual.transform.parent = itemContainer;
         machineVisual.transform.localPosition = new Vector2(0f, 0f);
         var sr = machineVisual.AddComponent<SpriteRenderer>();
-        sr.color = Color.magenta * 0.8f;
+        sr.sprite = CreateRouletteWheelSprite();
         sr.sortingOrder = 2;
         machineVisual.transform.localScale = new Vector3(1.4f, 1.4f, 1f);
 
@@ -38,6 +38,7 @@ public class RouletteWheel : ChallengeRoom
             btn.transform.localPosition = positions[i];
 
             var btnSr = btn.AddComponent<SpriteRenderer>();
+            btnSr.sprite = CreateSquareSprite(Color.white, Color.black);
             btnSr.color = colors[i];
             btnSr.sortingOrder = 1;
             btn.transform.localScale = new Vector3(1.2f, 0.8f, 1f);
