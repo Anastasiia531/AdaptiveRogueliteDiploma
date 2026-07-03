@@ -14,7 +14,6 @@ public class Monster : GameItem, IsAttackable
     protected float maxHP;
     protected float beKnockBackSeconds;
     protected float beKnockBackLength;
-    private Text hpText;
 
     protected override void Awake()
     {
@@ -100,41 +99,10 @@ public class Monster : GameItem, IsAttackable
         maxHP = HP;
         hpSlider.gameObject.SetActive(true);
         hpSlider.value = 1;
-
-        if (hpText == null)
-        {
-            GameObject textObj = new GameObject("HP_Text");
-            textObj.transform.SetParent(hpSlider.transform, false);
-
-            Font defaultFont = Resources.GetBuiltinResource<Font>("Arial.ttf");
-            if (defaultFont == null) defaultFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-
-            hpText = textObj.AddComponent<Text>();
-            hpText.font = defaultFont;
-            hpText.fontSize = 5;
-            hpText.color = Color.white;
-            hpText.alignment = TextAnchor.MiddleCenter;
-
-            RectTransform rect = textObj.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0.5f, 0.5f);
-            rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = new Vector2(0f, 4f); // Position slightly above the bar
-            rect.sizeDelta = new Vector2(80f, 15f);
-
-            var outline = textObj.AddComponent<Outline>();
-            outline.effectColor = Color.black;
-            outline.effectDistance = new Vector2(0.5f, -0.5f);
-        }
-        hpText.text = Mathf.Max(0, Mathf.RoundToInt(HP)) + " / " + Mathf.Max(1, Mathf.RoundToInt(maxHP));
     }
 
     protected virtual void UpdateHPSlider()
     {
         hpSlider.value = Mathf.Lerp(hpSlider.value, HP / maxHP, Time.deltaTime * 5);
-        if (hpText != null)
-        {
-            hpText.text = Mathf.Max(0, Mathf.RoundToInt(HP)) + " / " + Mathf.Max(1, Mathf.RoundToInt(maxHP));
-        }
     }
 }

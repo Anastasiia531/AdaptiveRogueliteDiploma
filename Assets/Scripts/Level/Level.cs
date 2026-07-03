@@ -609,7 +609,7 @@ public class Level : MonoBehaviour
         {
             int currentDepth = GameManager.Instance != null ? GameManager.Instance.depth : 0;
             bool isTutorial = GameManager.Instance != null && GameManager.Instance.isTutorialMode;
-            if (isTutorial && StoryManager.Instance != null && currentDepth >= 0 && currentDepth <= 4)
+            if ((currentDepth == 0 || isTutorial) && StoryManager.Instance != null && currentDepth >= 0 && currentDepth <= 4)
             {
                 StoryManager.Instance.ShowLevelTutorial(currentDepth, () => {
                     if (player != null) player.PlayerResume();
