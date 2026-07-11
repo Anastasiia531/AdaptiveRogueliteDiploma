@@ -35,18 +35,33 @@ public class Monster : GameItem, IsAttackable
         float totalMultiplier = ddaMult * depthMult;
 
         bool isBoss = name.Contains("Boss") || name.Contains("SBsuizhiyuan") || name.Contains("boss");
-        // Scale down HP globally (bosses scale much higher to be stronger)
-        float hpScale = isBoss ? 0.55f : 0.22f;
+        bool isFlyMinion = name.Contains("children");
+        bool isUndergrad = name.Contains("underGraduate");
+        
+        // Scale HP based on Isaac metrics
+        float hpScale = 1.0f;
+        if (isBoss) hpScale = 1.6f;
+        else if (isFlyMinion) hpScale = 0.35f;
+        else if (isUndergrad) hpScale = 0.9f;
+        else hpScale = 0.6f; // teenager/standard
         
         HP = HP * totalMultiplier * hpScale;
 
         if (isBoss)
         {
-            HP = Mathf.Clamp(HP, 45f, 95f);
+            HP = Mathf.Clamp(HP, 120f, 240f);
+        }
+        else if (isFlyMinion)
+        {
+            HP = Mathf.Clamp(HP, 3f, 6f);
+        }
+        else if (isUndergrad)
+        {
+            HP = Mathf.Clamp(HP, 15f, 28f);
         }
         else
         {
-            HP = Mathf.Clamp(HP, 3f, 12f);
+            HP = Mathf.Clamp(HP, 10f, 18f);
         }
         HP = Mathf.Round(HP);
 

@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -29,6 +29,10 @@ public abstract class Property : Item
     {
         if (collision.transform.CompareTag("Player") && IsTrigger() && canTriggerWithPlayer)
         {
+            if (UI != null)
+            {
+                UI.TryShowPickupPopup(GetType().Name, GetComponent<SpriteRenderer>().sprite);
+            }
             Effect();
             UI.UpdateStatus();
             After();

@@ -62,11 +62,27 @@ public class Room : MonoBehaviour
 
     public virtual void Initialize()
     {
-        roomLayout = level.pools.GetRoomLayout(roomType);
-        preRoom = roomLayout.room;
-        preRoom = Instantiate(preRoom);
-        preRoom.transform.parent = transform;
-        preRoom.transform.position = transform.position;
+        roomLayout = level.pools != null ? level.pools.GetRoomLayout(roomType) : null;
+        if (roomLayout == null || roomLayout.room == null)
+        {
+            Debug.LogError($"[Room] Failed to load RoomLayout for roomType: {roomType} at coordinate: {coordinate}. Falling back to StartRoom layout.");
+            if (level.pools != null)
+            {
+                roomLayout = level.pools.GetRoomLayout(RoomType.Start);
+            }
+        }
+
+        if (roomLayout != null && roomLayout.room != null)
+        {
+            preRoom = roomLayout.room;
+            preRoom = Instantiate(preRoom);
+            preRoom.transform.parent = transform;
+            preRoom.transform.position = transform.position;
+        }
+        else
+        {
+            Debug.LogError($"[Room] Fallback StartRoom layout also failed for coordinate: {coordinate}!");
+        }
         ChangeDoorOutWard();
     }
 
@@ -149,28 +165,39 @@ public class Room : MonoBehaviour
     {
         if (itemObj == null) return false;
         
-        // Don't block collectible items, chests, pedestals, or transitions
         string nameLower = itemObj.name.ToLower();
-        if (nameLower.Contains("pedestal") || 
-            nameLower.Contains("item") || 
-            nameLower.Contains("goods") || 
-            nameLower.Contains("chest") || 
-            nameLower.Contains("heart") || 
-            nameLower.Contains("key") || 
-            nameLower.Contains("coin") ||
-            nameLower.Contains("levelup") ||
-            nameLower.Contains("door"))
+
+        // 1. Boss Room Center check (to protect the LevelUp ladder/hatch at 0,0)
+        if (roomType == RoomType.Boss)
         {
-            return false;
+            // The LevelUp hatch is at (0, 0). Do not spawn ANY layout objects within 2.5 units of the center
+            if (coord.magnitude < 2.5f)
+            {
+                return true; // Prevent spawning
+            }
         }
 
-        // 1. Center safety zone (radius of 1.8 units around the center)
-        if (Mathf.Abs(coord.x) < 1.8f && Mathf.Abs(coord.y) < 1.8f)
+        // 2. Center safety zone for normal/combat rooms (prevent spawning obstacles at the player's spawn points, but allow items/chests)
+        bool isObstacle = !nameLower.Contains("pedestal") && 
+                          !nameLower.Contains("item") && 
+                          !nameLower.Contains("goods") && 
+                          !nameLower.Contains("chest") && 
+                          !nameLower.Contains("heart") && 
+                          !nameLower.Contains("key") && 
+                          !nameLower.Contains("coin") &&
+                          !nameLower.Contains("levelup") &&
+                          !nameLower.Contains("door");
+
+        if (isObstacle)
         {
-            return true;
+            // Center safety zone (radius of 1.8 units around the center)
+            if (Mathf.Abs(coord.x) < 1.8f && Mathf.Abs(coord.y) < 1.8f)
+            {
+                return true;
+            }
         }
 
-        // 2. Door safety zones and corridors
+        // 3. Door safety zones and corridors: NEVER spawn anything in active door paths!
         for (int i = 0; i < doorList.Count; i++)
         {
             if (activeDoorList.Contains(doorList[i]))
@@ -179,34 +206,26 @@ public class Room : MonoBehaviour
                 // Up Door
                 if (dir == DirectionType.Up)
                 {
-                    // Door area: x in [-1.8, 1.8], y in [3.5, 7.5]
-                    if (Mathf.Abs(coord.x) < 1.8f && coord.y > 3.5f) return true;
-                    // Corridor to center: x in [-1.2, 1.2], y in [0, 3.5]
-                    if (Mathf.Abs(coord.x) < 1.2f && coord.y >= 0f && coord.y <= 3.5f) return true;
+                    // Door area & corridor: x in [-2.0, 2.0], y in [0, 8.0]
+                    if (Mathf.Abs(coord.x) < 2.0f && coord.y >= -0.5f && coord.y <= 8.0f) return true;
                 }
                 // Down Door
                 else if (dir == DirectionType.Down)
                 {
-                    // Door area: x in [-1.8, 1.8], y in [-7.5, -3.5]
-                    if (Mathf.Abs(coord.x) < 1.8f && coord.y < -3.5f) return true;
-                    // Corridor to center: x in [-1.2, 1.2], y in [-3.5, 0]
-                    if (Mathf.Abs(coord.x) < 1.2f && coord.y <= 0f && coord.y >= -3.5f) return true;
+                    // Door area & corridor: x in [-2.0, 2.0], y in [-8.0, 0]
+                    if (Mathf.Abs(coord.x) < 2.0f && coord.y <= 0.5f && coord.y >= -8.0f) return true;
                 }
                 // Right Door
                 else if (dir == DirectionType.Right)
                 {
-                    // Door area: x in [8.5, 12.5], y in [-1.8, 1.8]
-                    if (coord.x > 8.5f && Mathf.Abs(coord.y) < 1.8f) return true;
-                    // Corridor to center: x in [0, 8.5], y in [-1.2, 1.2]
-                    if (coord.x >= 0f && coord.x <= 8.5f && Mathf.Abs(coord.y) < 1.2f) return true;
+                    // Door area & corridor: x in [0, 13.0], y in [-2.0, 2.0]
+                    if (coord.x >= -0.5f && coord.x <= 13.0f && Mathf.Abs(coord.y) < 2.0f) return true;
                 }
                 // Left Door
                 else if (dir == DirectionType.Left)
                 {
-                    // Door area: x in [-12.5, -8.5], y in [-1.8, 1.8]
-                    if (coord.x < -8.5f && Mathf.Abs(coord.y) < 1.8f) return true;
-                    // Corridor to center: x in [-8.5, 0], y in [-1.2, 1.2]
-                    if (coord.x <= 0f && coord.x >= -8.5f && Mathf.Abs(coord.y) < 1.2f) return true;
+                    // Door area & corridor: x in [-13.0, 0], y in [-2.0, 2.0]
+                    if (coord.x <= 0.5f && coord.x >= -13.0f && Mathf.Abs(coord.y) < 2.0f) return true;
                 }
             }
         }
@@ -219,6 +238,21 @@ public class Room : MonoBehaviour
     /// </summary>
     public virtual void GenerateRoomContent()
     {
+        if (roomLayout == null)
+        {
+            Debug.LogWarning($"[Room] Cannot generate content for roomType: {roomType} at coordinate: {coordinate} because roomLayout is null!");
+            CheckOpenDoor();
+            return;
+        }
+
+        if (roomLayout.itemList == null)
+        {
+            roomLayout.itemList = new List<SimplePairWithGameObjectVector2>();
+        }
+        if (roomLayout.monsterList == null)
+        {
+            roomLayout.monsterList = new List<Vector2>();
+        }
 
         for (int i = 0; i < roomLayout.itemList.Count; i++)
         {
@@ -297,6 +331,7 @@ public class Room : MonoBehaviour
     /// </summary>
     private void GenerateRoomClearingReward()
     {
+        if (roomLayout == null) return;
         GameObject reward = level.pools.GetRoomClearingReward(roomType);
         GenerateGameObjectWithCoordinate(reward, roomLayout.RewardPosition, itemContainer);
         if (roomType == RoomType.Boss)

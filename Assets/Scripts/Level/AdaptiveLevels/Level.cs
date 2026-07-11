@@ -7,7 +7,7 @@ using UnityEngine.UI;
 public class Level : MonoBehaviour
 {
     [Header("房间属性")]
-    public const int MAX_SIZE = 20;
+    public const int MAX_SIZE = 30;
     [SerializeField]
     private Room roomPrefab;
 
@@ -27,6 +27,8 @@ public class Level : MonoBehaviour
     public Player player;
     private UIManager UI;
     private bool roomsGenerated = false;
+    [HideInInspector]
+    public int weaponsSpawnedOnThisFloor = 0;
     #endregion
 
     private void Awake()
@@ -56,6 +58,8 @@ public class Level : MonoBehaviour
         }
 
         if (roomsGenerated) return;
+
+        weaponsSpawnedOnThisFloor = 0;
 
         if (GameManager.Instance == null || GameManager.Instance.player == null || UIManager.Instance == null)
         {
@@ -94,10 +98,10 @@ public class Level : MonoBehaviour
             AdaptiveDifficultyManager.Instance.EvaluateSkillBeforeGeneration();
         }
 
-        // DDA / Isaac adjustment: Ensure we always have at least 7 rooms
-        if (roomNum < 7 && !(GameManager.Instance != null && GameManager.Instance.isTutorialMode))
+        // DDA / Isaac adjustment: Ensure we always have at least 8 rooms
+        if (roomNum < 8 && !(GameManager.Instance != null && GameManager.Instance.isTutorialMode))
         {
-            roomNum = 7;
+            roomNum = 8;
         }
 
         if (GameManager.Instance != null && GameManager.Instance.isTutorialMode)
@@ -118,7 +122,7 @@ public class Level : MonoBehaviour
             attempts++;
             // Clear old rooms
             Array.Clear(roomArray, 0, roomArray.Length);
-            for (int i = 0; i < transform.childCount; i++)
+            for (int i = transform.childCount - 1; i >= 0; i--)
             {
                 DestroyImmediate(transform.GetChild(i).gameObject);
             }
@@ -175,7 +179,7 @@ public class Level : MonoBehaviour
     {
         // Clear old rooms
         Array.Clear(roomArray, 0, roomArray.Length);
-        for (int i = 0; i < transform.childCount; i++)
+        for (int i = transform.childCount - 1; i >= 0; i--)
         {
             DestroyImmediate(transform.GetChild(i).gameObject);
         }
@@ -251,13 +255,15 @@ public class Level : MonoBehaviour
 
     private void LinkDoors()
     {
+        int width = roomArray.GetLength(0);
+        int height = roomArray.GetLength(1);
         foreach (Room room in roomArray)
         {
             if (room != null)
             {
                 int x = (int)room.coordinate.x;
                 int y = (int)room.coordinate.y;
-                if (roomArray[x + 1, y] != null)
+                if (x + 1 < width && roomArray[x + 1, y] != null)
                 {
                     Room neighboringRoom = roomArray[x + 1, y];
                     GameObject neighboringDoor = neighboringRoom.doorList[1];
@@ -266,21 +272,21 @@ public class Level : MonoBehaviour
                         neighboringRoom,
                         neighboringDoor);
                 }
-                if (roomArray[x - 1, y] != null)
+                if (x - 1 >= 0 && roomArray[x - 1, y] != null)
                 {
                     room
                         .ActivateDoor(DirectionType.Down,
                         roomArray[x - 1, y],
                         (roomArray[x - 1, y].doorList[0]));
                 }
-                if (roomArray[x, y - 1] != null)
+                if (y - 1 >= 0 && roomArray[x, y - 1] != null)
                 {
                     room
                         .ActivateDoor(DirectionType.Left,
                         roomArray[x, y - 1],
                         roomArray[x, y - 1].doorList[3]);
                 }
-                if (roomArray[x, y + 1] != null)
+                if (y + 1 < height && roomArray[x, y + 1] != null)
                 {
                     room
                         .ActivateDoor(DirectionType.Right,
@@ -436,7 +442,7 @@ public class Level : MonoBehaviour
     {
         // Simple linear fallback to make sure the game ALWAYS launches without infinite loops
         Array.Clear(roomArray, 0, roomArray.Length);
-        for (int i = 0; i < transform.childCount; i++)
+        for (int i = transform.childCount - 1; i >= 0; i--)
         {
             DestroyImmediate(transform.GetChild(i).gameObject);
         }
@@ -467,7 +473,12 @@ public class Level : MonoBehaviour
             int x = (int)r.coordinate.x;
             int y = (int)r.coordinate.y;
 
-            if (i == 0 || i == fallbackRooms.Count - 1)
+            if (i == 0)
+            {
+                roomArray[x, y] = ConvertRoomComponent<CombatRoom>(r);
+                currentRoom = roomArray[x, y];
+            }
+            else if (i == fallbackRooms.Count - 1)
             {
                 roomArray[x, y] = ConvertRoomComponent<CombatRoom>(r);
             }
@@ -651,6 +662,24 @@ public class Level : MonoBehaviour
             normalRooms.Remove(safeRoomChoice);
         }
 
+        // Spawn Curse Room (50% chance, or 100% chance if skill is high for extra challenge)
+        bool spawnCurseRoom = UnityEngine.Random.value > 0.5f || skill > 0.7f;
+        if (spawnCurseRoom && normalRooms.Count > 0)
+        {
+            Room curseRoomChoice = normalRooms[UnityEngine.Random.Range(0, normalRooms.Count)];
+            curseRoomChoice.roomType = RoomType.Curse;
+            normalRooms.Remove(curseRoomChoice);
+        }
+
+        // Spawn Secret Room (50% chance, or 100% chance if skill is low so player gets extra items/helper loot)
+        bool spawnSecretRoom = UnityEngine.Random.value > 0.5f || skill < 0.4f;
+        if (spawnSecretRoom && normalRooms.Count > 0)
+        {
+            Room secretRoomChoice = normalRooms[UnityEngine.Random.Range(0, normalRooms.Count)];
+            secretRoomChoice.roomType = RoomType.Secret;
+            normalRooms.Remove(secretRoomChoice);
+        }
+
         // Determine Challenge room count (always at least 1 challenge room per floor)
         int targetChallengeCount = 1;
         if (skill > 0.7f)
@@ -687,11 +716,52 @@ public class Level : MonoBehaviour
 
         while (challengesSpawned < targetChallengeCount && normalRooms.Count > 0)
         {
-            Room selected = normalRooms[0];
-            if (skill <= 0.7f)
+            Room selected = null;
+            List<Room> nonAdjacentRooms = new List<Room>();
+
+            foreach (Room nr in normalRooms)
             {
-                selected = normalRooms[UnityEngine.Random.Range(0, normalRooms.Count)];
+                bool hasChallengeNeighbor = false;
+                if (nr.neighboringRoomList != null)
+                {
+                    foreach (Room neighbor in nr.neighboringRoomList)
+                    {
+                        if (neighbor != null && neighbor.roomType == RoomType.Challenge)
+                        {
+                            hasChallengeNeighbor = true;
+                            break;
+                        }
+                    }
+                }
+                if (!hasChallengeNeighbor)
+                {
+                    nonAdjacentRooms.Add(nr);
+                }
             }
+
+            if (nonAdjacentRooms.Count > 0)
+            {
+                if (skill <= 0.7f)
+                {
+                    selected = nonAdjacentRooms[UnityEngine.Random.Range(0, nonAdjacentRooms.Count)];
+                }
+                else
+                {
+                    selected = nonAdjacentRooms[0];
+                }
+            }
+            else
+            {
+                if (skill <= 0.7f)
+                {
+                    selected = normalRooms[UnityEngine.Random.Range(0, normalRooms.Count)];
+                }
+                else
+                {
+                    selected = normalRooms[0];
+                }
+            }
+
             selected.roomType = RoomType.Challenge;
             normalRooms.Remove(selected);
             challengesSpawned++;
@@ -714,7 +784,7 @@ public class Level : MonoBehaviour
                 {
                     roomArray[x, y] = ConvertRoomComponent<CombatRoom>(r);
                 }
-                else if (r.roomType == RoomType.Treasure || r.roomType == RoomType.Shop || r.roomType == RoomType.SafeRoom)
+                else if (r.roomType == RoomType.Treasure || r.roomType == RoomType.Shop || r.roomType == RoomType.SafeRoom || r.roomType == RoomType.Curse || r.roomType == RoomType.Secret)
                 {
                     roomArray[x, y] = ConvertRoomComponent<SpecialtyRoom>(r);
                 }
@@ -740,6 +810,13 @@ public class Level : MonoBehaviour
                 Room r = roomArray[x, y];
                 if (r != null && r.roomType == RoomType.Challenge)
                 {
+                    // If this room has already been converted to a concrete mini-game subclass, skip it!
+                    System.Type rType = r.GetType();
+                    if (rType != typeof(Room) && rType != typeof(ChallengeRoom))
+                    {
+                        continue;
+                    }
+
                     string challClass = allowedChallenges[UnityEngine.Random.Range(0, allowedChallenges.Length)];
                     switch (challClass)
                     {
@@ -854,6 +931,13 @@ public class Level : MonoBehaviour
         int y = (int)currentRoom.coordinate.y + (int)MoveDirection.x;
         currentRoom = roomArray[x, y];
 
+        // Handle Curse Room entry damage (just like the spiked doors in The Binding of Isaac)
+        if (currentRoom.roomType == RoomType.Curse && player != null)
+        {
+            player.ReduceHealth(1f);
+            Debug.Log("[DDA / Isaac] Player took 1 damage from entering the Curse Room.");
+        }
+
         //如果没去过该房间便生成房间内容
         if (!currentRoom.isArrived)
         {
@@ -872,6 +956,12 @@ public class Level : MonoBehaviour
             string taskStr = "КІМНАТА: Знайдіть вихід!";
             switch (currentRoom.roomType)
             {
+                case RoomType.Curse:
+                    taskStr = "КІМНАТА ПРОКЛЯТТЯ: Отримайте нагороду ціною власної крові!";
+                    break;
+                case RoomType.Secret:
+                    taskStr = "ТАЄМНА КІМНАТА: Ви знайшли секрет! Заберіть свій скарб!";
+                    break;
                 case RoomType.Start:
                     taskStr = "СТАРТОВА КІМНАТА: Знайдіть кімнату боса!";
                     break;

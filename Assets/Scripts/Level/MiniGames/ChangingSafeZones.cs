@@ -24,9 +24,27 @@ public class ChangingSafeZones : ChallengeRoom
         safeZoneObj.transform.parent = itemContainer;
         safeZoneObj.transform.localPosition = Vector2.zero; // Start at center
 
+        Color innerCol = new Color(0f, 1f, 0f, 0.4f);
+        Color borderCol = Color.green;
+        if (visualStylePattern == 0) // Holy Shield
+        {
+            innerCol = new Color(1f, 0.9f, 0f, 0.4f); // Golden yellow
+            borderCol = new Color(1f, 0.84f, 0f);
+        }
+        else if (visualStylePattern == 1) // Cyber Shield
+        {
+            innerCol = new Color(0f, 0.9f, 1f, 0.4f); // Neon Cyan
+            borderCol = new Color(0f, 0.6f, 1f);
+        }
+        else // Magic Circle
+        {
+            innerCol = new Color(0.9f, 0f, 0.9f, 0.4f); // Neon Purple
+            borderCol = new Color(0.7f, 0f, 0.7f);
+        }
+
         var sr = safeZoneObj.AddComponent<SpriteRenderer>();
-        sr.sprite = CreateCircleSprite(Color.white, Color.black);
-        sr.color = new Color(0f, 1f, 0f, 0.3f); // Semi-transparent green
+        sr.sprite = CreateCircleSprite(innerCol, borderCol);
+        sr.color = new Color(1f, 1f, 1f, 1f);
         sr.sortingOrder = 1;
 
         safeZoneObj.transform.localScale = new Vector3(safeZoneSize, safeZoneSize, 1f);

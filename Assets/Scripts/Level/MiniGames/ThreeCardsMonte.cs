@@ -29,8 +29,26 @@ public class ThreeCardsMonte : ChallengeRoom
             ped.transform.parent = itemContainer;
             ped.transform.localPosition = new Vector2(startX + i * 3f, 0f);
 
+            Color backing = Color.blue;
+            Color pattern = Color.yellow;
+            if (visualStylePattern == 0) // Egyptian Tarot
+            {
+                backing = new Color(0.35f, 0f, 0.5f); // Purple
+                pattern = new Color(0.95f, 0.8f, 0f); // Gold
+            }
+            else if (visualStylePattern == 1) // Cyberpunk
+            {
+                backing = new Color(0f, 0.8f, 0.8f); // Cyan
+                pattern = new Color(1f, 0f, 0.4f); // Neon Pink
+            }
+            else // Classic Isaac
+            {
+                backing = new Color(0.45f, 0.25f, 0.1f); // Rustic Brown
+                pattern = new Color(0.8f, 0.1f, 0.1f); // Crimson
+            }
+
             var sr = ped.AddComponent<SpriteRenderer>();
-            sr.sprite = CreateCardSprite(Color.blue);
+            sr.sprite = CreateCardSprite(backing, pattern);
             sr.sortingOrder = 4;
 
             // Trigger for player interaction

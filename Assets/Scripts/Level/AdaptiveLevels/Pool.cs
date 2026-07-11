@@ -59,21 +59,41 @@ public class Pool : MonoBehaviour
         treasureRoom.AddRange(Resources.LoadAll<RoomLayout>(roomLayoutFileFolderPath[3]));
         shopRoom.AddRange(Resources.LoadAll<RoomLayout>(roomLayoutFileFolderPath[4]));
 
-        // Load items and filter out Python completely so it is never spawned!
+        Item pythonItem = null;
+        Item passiveTemplate = null;
+
+        // Load items and find Python + template item
         foreach (var item in TreasureRoomItemPool.itemList)
         {
-            if (item != null && !item.name.Contains("Python") && item.GetComponent<Python>() == null)
+            if (item != null)
             {
-                TreasureRoomItemList.Add(item);
+                if (item.name.Contains("Python") || item.GetComponent<Python>() != null)
+                {
+                    pythonItem = item;
+                }
+                else
+                {
+                    TreasureRoomItemList.Add(item);
+                    if (passiveTemplate == null && !(item is Weapon) && item.GetComponent<Weapon>() == null)
+                    {
+                        passiveTemplate = item;
+                    }
+                }
             }
         }
+
         foreach (var item in BossRoomItemPool.itemList)
         {
             if (item != null && !item.name.Contains("Python") && item.GetComponent<Python>() == null)
             {
-                BossRoomItemList.Add(item);
+                // In The Binding of Isaac, boss drops are ALWAYS stat/HP upgrades, NEVER weapon replacements
+                if (!(item is Weapon) && item.GetComponent<Weapon>() == null)
+                {
+                    BossRoomItemList.Add(item);
+                }
             }
         }
+
         foreach (var item in ShopItemPool.itemList)
         {
             if (item != null && !item.name.Contains("Python") && item.GetComponent<Python>() == null)
@@ -81,6 +101,64 @@ public class Pool : MonoBehaviour
                 ShopItemList.Add(item);
             }
         }
+
+        // Add Python to shop!
+        if (pythonItem != null && !ShopItemList.Contains(pythonItem))
+        {
+            ShopItemList.Add(pythonItem);
+        }
+
+        // Generate and add temporary/new passive items programmatically
+        if (passiveTemplate != null)
+        {
+            // 1. BookOfBelial: red color. Added to TreasureRoom and Shop pools.
+            BookOfBelial belial = CreateRuntimeItemPrefab<BookOfBelial>(passiveTemplate, "BookOfBelial", new Color(1f, 0.2f, 0.2f, 1f));
+            if (belial != null)
+            {
+                TreasureRoomItemList.Add(belial);
+                ShopItemList.Add(belial);
+            }
+
+            // 2. Gamekid: bright green color. Added to TreasureRoom and Shop pools.
+            Gamekid gamekid = CreateRuntimeItemPrefab<Gamekid>(passiveTemplate, "Gamekid", new Color(0.2f, 1f, 0.2f, 1f));
+            if (gamekid != null)
+            {
+                TreasureRoomItemList.Add(gamekid);
+                ShopItemList.Add(gamekid);
+            }
+
+            // 3. Compass: bright gold/yellow color. Added to Shop pool.
+            TheCompass compass = CreateRuntimeItemPrefab<TheCompass>(passiveTemplate, "Compass", new Color(1f, 0.85f, 0f, 1f));
+            if (compass != null)
+            {
+                ShopItemList.Add(compass);
+            }
+        }
+    }
+
+    private T CreateRuntimeItemPrefab<T>(Item template, string name, Color color) where T : Item
+    {
+        if (template == null) return null;
+        GameObject go = Instantiate(template.gameObject);
+        go.name = name;
+        go.SetActive(false);
+        DontDestroyOnLoad(go);
+
+        // Remove the template component
+        Component comp = go.GetComponent(template.GetType());
+        if (comp != null) DestroyImmediate(comp);
+
+        // Add the new component
+        T newItem = go.AddComponent<T>();
+
+        // Set distinctive color on the SpriteRenderer
+        SpriteRenderer sr = go.GetComponent<SpriteRenderer>();
+        if (sr != null)
+        {
+            sr.color = color;
+        }
+
+        return newItem;
     }
 
     public RoomLayout GetRoomLayout(RoomType type)
@@ -103,13 +181,15 @@ public class Pool : MonoBehaviour
                 return GetRandomRoomLayout(normalRoom, true);
             case RoomType.Challenge:
             case RoomType.SafeRoom:
-                if (normalRoom == null || normalRoom.Count == 0)
+            case RoomType.Curse:
+            case RoomType.Secret:
+                if (startRoom == null || startRoom.Count == 0)
                 {
-                    normalRoom.Clear();
-                    normalRoom.AddRange(Resources.LoadAll<RoomLayout>(roomLayoutFileFolderPath[1]));
+                    startRoom.Clear();
+                    startRoom.AddRange(Resources.LoadAll<RoomLayout>(roomLayoutFileFolderPath[0]));
                 }
-                // Use false so we do not consume/remove layouts from the normal room pool
-                return GetRandomRoomLayout(normalRoom, false);
+                // Use false so we do not consume/remove layouts from the start room pool
+                return GetRandomRoomLayout(startRoom, false);
             case RoomType.Boss:
                 if (bossRoom == null || bossRoom.Count == 0)
                 {
@@ -137,9 +217,12 @@ public class Pool : MonoBehaviour
     }
     RoomLayout GetRandomRoomLayout(List<RoomLayout> list, bool isRemove)
     {
-        RoomLayout go;
+        if (list == null) return null;
+        list.RemoveAll(item => item == null);
+        if (list.Count == 0) return null;
+
         int index = Random.Range(0, list.Count);
-        go = list[index];
+        RoomLayout go = list[index];
         if (isRemove) { list.RemoveAt(index); }
         return go;
     }
@@ -168,48 +251,116 @@ public class Pool : MonoBehaviour
                 break;
         }
 
-        // DDA / Isaac adjustment: make weapons rarer and scale based on player performance (DDA)
-        if (Item != null && Item is Weapon)
+        if (Item != null)
         {
-            float weaponChance = 0.20f; // 20% default chance to keep the weapon
-            if (AdaptiveDifficultyManager.Instance != null)
+            // Reduce Broken Heart frequency by 80% by replacing it with another passive
+            if (Item.name.Contains("TheBrokenHeart") || Item.GetComponent<TheBrokenHeart>() != null)
             {
-                // plays well (SkillIndex=1) -> weapons are even rarer (10% chance)
-                // plays poorly (SkillIndex=0) -> weapons are more common (35% chance)
-                weaponChance = Mathf.Lerp(0.35f, 0.10f, AdaptiveDifficultyManager.Instance.SkillIndex);
+                if (Random.value < 0.80f)
+                {
+                    Item replacement = GetPassiveReplacement(type, Item);
+                    if (replacement != null)
+                    {
+                        Item = replacement;
+                    }
+                }
             }
 
-            if (Random.value > weaponChance)
-            {
-                // Replace with a passive item from the pool!
-                List<Item> passives = new List<Item>();
-                List<Item> sourcePool = null;
-                if (type == ItemPoolType.TreasureRoom) sourcePool = TreasureRoomItemList;
-                else if (type == ItemPoolType.BossRoom) sourcePool = BossRoomItemList;
-                else if (type == ItemPoolType.Shop) sourcePool = ShopItemList;
+            Level activeLevel = GameManager.Instance != null ? GameManager.Instance.level : null;
+            bool cannotHaveWeapon = false;
 
-                if (sourcePool != null)
+            // Rule 1: Weapons can ONLY be obtained in Shop or BossRoom (NOT in TreasureRoom or other rooms)
+            if (type == ItemPoolType.TreasureRoom)
+            {
+                cannotHaveWeapon = true;
+            }
+
+            // Rule 2: No more than 1 weapon per floor
+            if (activeLevel != null && activeLevel.weaponsSpawnedOnThisFloor >= 1)
+            {
+                cannotHaveWeapon = true;
+            }
+
+            if (Item is Weapon)
+            {
+                if (cannotHaveWeapon)
                 {
-                    foreach (Item candidate in sourcePool)
+                    // Force replace with a passive item
+                    Item replacement = GetPassiveReplacement(type, Item);
+                    if (replacement != null)
                     {
-                        if (candidate != null && !(candidate is Weapon))
+                        Item = replacement;
+                    }
+                    else if (defaultItem != null)
+                    {
+                        Item = defaultItem;
+                    }
+                }
+                else
+                {
+                    // Weapon allowed! We apply the DDA / Isaac rarity chances
+                    float weaponChance = 0.12f; // 12% default chance
+                    if (AdaptiveDifficultyManager.Instance != null)
+                    {
+                        weaponChance = Mathf.Lerp(0.20f, 0.05f, AdaptiveDifficultyManager.Instance.SkillIndex);
+                    }
+
+                    if (Random.value > weaponChance)
+                    {
+                        // Replace with passive
+                        Item replacement = GetPassiveReplacement(type, Item);
+                        if (replacement != null)
                         {
-                            passives.Add(candidate);
+                            Item = replacement;
+                        }
+                    }
+                    else
+                    {
+                        // Weapon successfully spawned! Increment count
+                        if (activeLevel != null)
+                        {
+                            activeLevel.weaponsSpawnedOnThisFloor++;
                         }
                     }
                 }
+            }
+        }
 
-                if (passives.Count > 0)
+        return Item;
+    }
+
+    private Item GetPassiveReplacement(ItemPoolType type, Item originalWeapon)
+    {
+        List<Item> passives = new List<Item>();
+        List<Item> sourcePool = null;
+        if (type == ItemPoolType.TreasureRoom) sourcePool = TreasureRoomItemList;
+        else if (type == ItemPoolType.BossRoom) sourcePool = BossRoomItemList;
+        else if (type == ItemPoolType.Shop) sourcePool = ShopItemList;
+
+        if (sourcePool != null)
+        {
+            foreach (Item candidate in sourcePool)
+            {
+                if (candidate != null && !(candidate is Weapon))
                 {
-                    Item replacement = passives[Random.Range(0, passives.Count)];
-                    sourcePool.Remove(replacement);
-                    // Put the weapon back so it can be rolled later
-                    sourcePool.Add(Item);
-                    Item = replacement;
+                    passives.Add(candidate);
                 }
             }
         }
-        return Item;
+
+        if (passives.Count > 0)
+        {
+            Item replacement = passives[Random.Range(0, passives.Count)];
+            sourcePool.Remove(replacement);
+            // Put the weapon back so it can be rolled later on other floors
+            if (sourcePool != null)
+            {
+                sourcePool.Add(originalWeapon);
+            }
+            return replacement;
+        }
+
+        return null;
     }
     private Item GetRamdomItem(List<Item> list)
     {

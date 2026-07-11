@@ -7,10 +7,12 @@ public class ChallengeRoom : Room
     protected float challengeStartTime;
     protected bool challengeActive = false;
     protected float skillIndexAtStart = 0.5f;
+    protected int visualStylePattern = 0;
 
     public override void Initialize()
     {
         base.Initialize();
+        visualStylePattern = UnityEngine.Random.Range(0, 3);
         CreateWorldSpaceLabel();
     }
 
@@ -222,7 +224,7 @@ public class ChallengeRoom : Room
         return Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), 32f);
     }
 
-    public static Sprite CreateRouletteWheelSprite(int size = 128)
+    public static Sprite CreateRouletteWheelSprite(int styleIndex = 0, int size = 128)
     {
         Texture2D texture = new Texture2D(size, size);
         float radius = size / 2f;
@@ -251,17 +253,21 @@ public class ChallengeRoom : Room
                     if (angle < 0) angle += 360f;
 
                     int segment = Mathf.FloorToInt(angle / 45f);
-                    if (segment % 3 == 0)
+                    if (styleIndex == 0) // Casino Classic
                     {
-                        texture.SetPixel(x, y, Color.red);
+                        if (segment % 3 == 0) texture.SetPixel(x, y, Color.red);
+                        else if (segment % 3 == 1) texture.SetPixel(x, y, Color.black);
+                        else texture.SetPixel(x, y, new Color(0f, 0.6f, 0f));
                     }
-                    else if (segment % 3 == 1)
+                    else if (styleIndex == 1) // Toxic Acid
                     {
-                        texture.SetPixel(x, y, Color.black);
+                        if (segment % 2 == 0) texture.SetPixel(x, y, new Color(0.2f, 0f, 0.4f)); // Dark purple
+                        else texture.SetPixel(x, y, Color.green); // Acid green
                     }
-                    else
+                    else // Royal Fortune
                     {
-                        texture.SetPixel(x, y, new Color(0f, 0.6f, 0f));
+                        if (segment % 2 == 0) texture.SetPixel(x, y, new Color(0f, 0.2f, 0.6f)); // Royal Blue
+                        else texture.SetPixel(x, y, new Color(1f, 0.84f, 0f)); // Gold
                     }
                 }
             }
@@ -271,7 +277,7 @@ public class ChallengeRoom : Room
         return Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), 32f);
     }
 
-    public static Sprite CreateCardSprite(Color backingColor, int width = 48, int height = 64)
+    public static Sprite CreateCardSprite(Color backingColor, Color patternColor, int width = 48, int height = 64)
     {
         Texture2D texture = new Texture2D(width, height);
         for (int y = 0; y < height; y++)
@@ -286,7 +292,7 @@ public class ChallengeRoom : Room
                 else
                 {
                     bool isCenterPattern = (x >= width/2 - 2 && x <= width/2 + 2 && y >= height/2 - 6 && y <= height/2 + 6);
-                    texture.SetPixel(x, y, isCenterPattern ? Color.yellow : backingColor);
+                    texture.SetPixel(x, y, isCenterPattern ? patternColor : backingColor);
                 }
             }
         }
@@ -295,7 +301,7 @@ public class ChallengeRoom : Room
         return Sprite.Create(texture, new Rect(0f, 0f, width, height), new Vector2(0.5f, 0.5f), 32f);
     }
 
-    public static Sprite CreateEyeSprite(bool open, int width = 64, int height = 32)
+    public static Sprite CreateEyeSprite(bool open, int styleIndex = 0, int width = 64, int height = 32)
     {
         Texture2D texture = new Texture2D(width, height);
         float radiusX = width / 2f;
@@ -316,11 +322,21 @@ public class ChallengeRoom : Room
                     float pupilDist = Vector2.Distance(new Vector2(x, y * 2), new Vector2(center.x, center.y * 2));
                     if (pupilDist < 8f)
                     {
-                        texture.SetPixel(x, y, open ? Color.red : Color.black);
+                        if (styleIndex == 0) // Gothic
+                            texture.SetPixel(x, y, open ? Color.red : Color.black);
+                        else if (styleIndex == 1) // Cyborg
+                            texture.SetPixel(x, y, open ? Color.blue : Color.black);
+                        else // Demon Lord
+                            texture.SetPixel(x, y, open ? Color.black : Color.red);
                     }
                     else if (pupilDist < 16f)
                     {
-                        texture.SetPixel(x, y, open ? Color.yellow : new Color(0f, 0.4f, 0f));
+                        if (styleIndex == 0) // Gothic
+                            texture.SetPixel(x, y, open ? Color.yellow : new Color(0f, 0.4f, 0f));
+                        else if (styleIndex == 1) // Cyborg
+                            texture.SetPixel(x, y, open ? Color.cyan : Color.grey);
+                        else // Demon Lord
+                            texture.SetPixel(x, y, open ? Color.red : Color.yellow);
                     }
                     else
                     {

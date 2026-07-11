@@ -35,8 +35,13 @@ public class SequenceMemoryChallenge : ChallengeRoom
             btnGo.transform.parent = itemContainer;
             btnGo.transform.localPosition = positions[i];
 
+            Color borderCol = Color.black;
+            if (visualStylePattern == 0) borderCol = new Color(1f, 0f, 0.8f); // Neon Magenta
+            else if (visualStylePattern == 1) borderCol = new Color(0.85f, 0.7f, 0f); // Antique Gold
+            else borderCol = new Color(0f, 0.8f, 1f); // Neon Cyan
+
             var sr = btnGo.AddComponent<SpriteRenderer>();
-            sr.sprite = CreateSquareSprite(Color.white, Color.black);
+            sr.sprite = CreateSquareSprite(Color.white, borderCol);
             sr.color = btnColors[i] * 0.5f; // Dim color initially
             sr.sortingOrder = 1;
 

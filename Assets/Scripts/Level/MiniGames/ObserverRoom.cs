@@ -30,7 +30,7 @@ public class ObserverRoom : ChallengeRoom
             eye.transform.localPosition = eyePos[i];
 
             var sr = eye.AddComponent<SpriteRenderer>();
-            sr.sprite = CreateEyeSprite(false);
+            sr.sprite = CreateEyeSprite(false, visualStylePattern);
             sr.color = Color.green; // Starts safe (green/closed)
             sr.sortingOrder = 3;
             eye.transform.localScale = new Vector3(1.2f, 0.6f, 1f);
@@ -44,8 +44,21 @@ public class ObserverRoom : ChallengeRoom
         finishZone.transform.localPosition = new Vector2(8f, 0f);
 
         var finishSr = finishZone.AddComponent<SpriteRenderer>();
-        finishSr.sprite = CreateCircleSprite(Color.white, Color.black);
-        finishSr.color = Color.green * 0.8f;
+        if (visualStylePattern == 0)
+        {
+            finishSr.sprite = CreateCircleSprite(Color.white, Color.black);
+            finishSr.color = Color.green * 0.8f;
+        }
+        else if (visualStylePattern == 1)
+        {
+            finishSr.sprite = CreateCircleSprite(Color.black, Color.magenta);
+            finishSr.color = Color.white;
+        }
+        else
+        {
+            finishSr.sprite = CreateCircleSprite(new Color(1f, 0.84f, 0f), Color.red);
+            finishSr.color = Color.white;
+        }
         finishSr.sortingOrder = 1;
         finishZone.transform.localScale = new Vector3(1.5f, 1.5f, 1f);
 
@@ -123,7 +136,7 @@ public class ObserverRoom : ChallengeRoom
                 var sr = eye.GetComponent<SpriteRenderer>();
                 if (sr != null)
                 {
-                    sr.sprite = CreateEyeSprite(color == Color.red);
+                    sr.sprite = CreateEyeSprite(color == Color.red, visualStylePattern);
                     sr.color = color;
                 }
             }

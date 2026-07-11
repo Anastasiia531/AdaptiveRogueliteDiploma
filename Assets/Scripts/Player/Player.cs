@@ -40,10 +40,13 @@ public class Player : MonoBehaviour, IsAttackable
     }
 
     [HideInInspector]
+    public HashSet<string> discoveredItems = new HashSet<string>();
+
+    [HideInInspector]
     public bool isAbleSwitch;
     public bool isLive;
     public bool isControllable = true;
-    bool isInvincible;
+    public bool isInvincible;
     [HideInInspector]
     public int bulletNum = 1;
     public float shotTiming;
@@ -189,7 +192,6 @@ public class Player : MonoBehaviour, IsAttackable
 
     public void SwitchToGun(GunType gunType)
     {
-        if (gunType == GunType.Python) return;
         bool isFirstTime = !isGunAvailable[(int)gunType];
         isGunAvailable[(int)gunType] = true;
         guns[gunNum].SetActive(false);
@@ -285,6 +287,24 @@ public class Player : MonoBehaviour, IsAttackable
             guns[gunNum].GetComponent<Gun>().NUM = bulletNum;
             guns[gunNum].SetActive(true);
             if (UI != null) UI.UpdateStatus();
+        }
+
+        // Support digits 1-5 for direct weapon swapping
+        KeyCode[] numKeys = new KeyCode[] { KeyCode.Alpha1, KeyCode.Alpha2, KeyCode.Alpha3, KeyCode.Alpha4, KeyCode.Alpha5 };
+        for (int i = 0; i < numKeys.Length; i++)
+        {
+            if (Input.GetKeyDown(numKeys[i]))
+            {
+                if (i < guns.Length && isGunAvailable[i] && gunNum != i)
+                {
+                    guns[gunNum].SetActive(false);
+                    gunNum = i;
+                    guns[gunNum].GetComponent<Gun>().NUM = bulletNum;
+                    guns[gunNum].SetActive(true);
+                    if (UI != null) UI.UpdateStatus();
+                    break;
+                }
+            }
         }
     }
 
@@ -487,20 +507,20 @@ public class Player : MonoBehaviour, IsAttackable
     {
         if (isControllable && collider.transform.CompareTag("Door"))
         {
-            string flag = collider.transform.parent.gameObject.name;
-            if (flag == "DoorUp")
+            string flag = collider.transform.parent.gameObject.name.ToLower();
+            if (flag.Contains("up"))
             {
                 level.MoveToNextRoom(Vector2.up);
             }
-            else if (flag == "DoorDown")
+            else if (flag.Contains("down"))
             {
                 level.MoveToNextRoom(Vector2.down);
             }
-            else if (flag == "DoorLeft")
+            else if (flag.Contains("left"))
             {
                 level.MoveToNextRoom(Vector2.left);
             }
-            else if (flag == "DoorRight")
+            else if (flag.Contains("right"))
             {
                 level.MoveToNextRoom(Vector2.right);
             }

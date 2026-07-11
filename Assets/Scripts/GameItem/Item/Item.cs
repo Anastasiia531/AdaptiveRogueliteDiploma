@@ -6,7 +6,7 @@ public abstract class Item : GameItem
 {
     public override GameItemType gameItemType { get { return GameItemType.Item; } }
 
-    protected UIManager UI;
+    protected UIManager UI { get { return UIManager.Instance; } }
     protected Pool pools;
 
     protected bool canTriggerWithPlayer = false;
@@ -21,7 +21,6 @@ public abstract class Item : GameItem
         //gameObject.tag = "Prop";
         //gameObject.layer = 14;
         //GetComponent<SpriteRenderer>().sortingOrder = GameDate.RENDERERORDER_PROP;
-        UI = UIManager.Instance;
         pools = level.pools;
         Invoke("TriggerWithPlayer", triggerTime);
     }

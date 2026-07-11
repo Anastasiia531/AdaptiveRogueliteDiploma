@@ -60,8 +60,21 @@ public class TimeMazeChallenge : ChallengeRoom
             wall.transform.localPosition = wallPositions[i];
 
             var sr = wall.AddComponent<SpriteRenderer>();
-            sr.sprite = CreateSquareSprite(Color.white, Color.black);
-            sr.color = new Color(0.3f, 0.3f, 0.4f, 1f); // Dark stone color
+            if (visualStylePattern == 0) // Stone Dungeon
+            {
+                sr.sprite = CreateSquareSprite(Color.white, Color.black);
+                sr.color = new Color(0.3f, 0.3f, 0.4f, 1f);
+            }
+            else if (visualStylePattern == 1) // Cyber Grid
+            {
+                sr.sprite = CreateSquareSprite(Color.black, Color.cyan);
+                sr.color = Color.white;
+            }
+            else // Organic Womb
+            {
+                sr.sprite = CreateSquareSprite(new Color(0.6f, 0f, 0.1f), new Color(0.3f, 0f, 0f));
+                sr.color = Color.white;
+            }
             sr.sortingOrder = 3;
 
             wall.transform.localScale = new Vector3(1.2f, 2.5f, 1f);
@@ -78,8 +91,21 @@ public class TimeMazeChallenge : ChallengeRoom
         finishZone.transform.localPosition = new Vector2(8f, 0f);
 
         var finishSr = finishZone.AddComponent<SpriteRenderer>();
-        finishSr.sprite = CreateCircleSprite(Color.white, Color.black);
-        finishSr.color = Color.green * 0.8f;
+        if (visualStylePattern == 0)
+        {
+            finishSr.sprite = CreateCircleSprite(Color.white, Color.black);
+            finishSr.color = Color.green * 0.8f;
+        }
+        else if (visualStylePattern == 1)
+        {
+            finishSr.sprite = CreateCircleSprite(Color.black, Color.magenta);
+            finishSr.color = Color.white;
+        }
+        else
+        {
+            finishSr.sprite = CreateCircleSprite(new Color(1f, 0.84f, 0f), Color.red);
+            finishSr.color = Color.white;
+        }
         finishSr.sortingOrder = 1;
         finishZone.transform.localScale = new Vector3(1.5f, 1.5f, 1f);
 

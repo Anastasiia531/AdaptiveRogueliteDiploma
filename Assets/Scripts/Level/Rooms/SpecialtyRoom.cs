@@ -21,6 +21,14 @@ public class SpecialtyRoom : Room
         {
             SpawnSafeRoomContent();
         }
+        else if (roomType == RoomType.Curse)
+        {
+            SpawnCurseRoomContent();
+        }
+        else if (roomType == RoomType.Secret)
+        {
+            SpawnSecretRoomContent();
+        }
     }
 
     private void SpawnSafeRoomContent()
@@ -46,6 +54,54 @@ public class SpecialtyRoom : Room
                 if (pickup2 != null)
                 {
                     GenerateGameObjectWithCoordinate(pickup2, new Vector2(1.5f, 0f), itemContainer);
+                }
+            }
+        }
+    }
+
+    private void SpawnCurseRoomContent()
+    {
+        if (level != null && level.pools != null)
+        {
+            // Spawn an item pedestal in the center of the Curse Room
+            Item item = level.pools.GetItem(ItemPoolType.TreasureRoom);
+            if (item != null)
+            {
+                GenerateGameObjectWithCoordinate(item.gameObject, new Vector2(0f, 0f), itemContainer);
+            }
+            // Spawn 1-2 spikes or negative pickups/chests
+            if (Random.value > 0.5f)
+            {
+                GameObject pickup = level.pools.GetPickupGoods();
+                if (pickup != null)
+                {
+                    GenerateGameObjectWithCoordinate(pickup, new Vector2(-2f, -1f), itemContainer);
+                }
+            }
+        }
+    }
+
+    private void SpawnSecretRoomContent()
+    {
+        if (level != null && level.pools != null)
+        {
+            // Secret Room contains high reward: 1 item pedestal + multiple pickups (coins/bombs)
+            Item item = level.pools.GetItem(ItemPoolType.TreasureRoom);
+            if (item != null)
+            {
+                GenerateGameObjectWithCoordinate(item.gameObject, new Vector2(0f, 0f), itemContainer);
+            }
+            
+            // Spawn 2-3 pickups (gold/bombs/chests)
+            float[] offsetsX = { -2f, 2f, 0f };
+            float[] offsetsY = { 2f, 2f, -2f };
+            int pickupCount = Random.Range(2, 4);
+            for (int i = 0; i < pickupCount; i++)
+            {
+                GameObject pickup = level.pools.GetPickupGoods();
+                if (pickup != null)
+                {
+                    GenerateGameObjectWithCoordinate(pickup, new Vector2(offsetsX[i], offsetsY[i]), itemContainer);
                 }
             }
         }

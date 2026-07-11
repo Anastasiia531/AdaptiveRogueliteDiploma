@@ -18,7 +18,7 @@ public class RouletteWheel : ChallengeRoom
         machineVisual.transform.parent = itemContainer;
         machineVisual.transform.localPosition = new Vector2(0f, 0f);
         var sr = machineVisual.AddComponent<SpriteRenderer>();
-        sr.sprite = CreateRouletteWheelSprite();
+        sr.sprite = CreateRouletteWheelSprite(visualStylePattern);
         sr.sortingOrder = 2;
         machineVisual.transform.localScale = new Vector3(1.4f, 1.4f, 1f);
 
